@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="grid">
+{% for c in cards %}
+  <a class="card" href="/athletes/{{ c.athlete.id }}" style="text-decoration:none;color:inherit">
+    <div style="font-weight:600">{{ c.athlete.name }}</div>
+    {% if c.today %}
+      <div class="big"><span class="dot {{ c.today.signal }}"></span>{{ c.today.state }}</div>
+      <div class="muted">{{ c.today.date }} · readiness {{ c.today.readiness }} · debt {{ c.today.debt }}</div>
+    {% else %}
+      <div class="muted">No data yet</div>
+    {% endif %}
+  </a>
+{% endfor %}
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Add athlete</h3>
+  <form class="row" method="post" action="/athletes">
+    <input name="name" placeholder="Name" required>
+    <input name="intervals_id" placeholder="intervals.icu athlete id (optional)">
+    <input name="api_key" placeholder="intervals.icu API key (optional)" type="password">
+    <button>Add</button>
+  </form>
+  <p class="muted" style="margin-bottom:0">
+    With an intervals.icu key the data syncs by itself (Settings → Developer Settings; athlete id like <code>i123456</code>, empty = the key's own account).
+    Without it, upload a TrainingPeaks export on the athlete page.
+  </p>
+</div>
+{% endblock %}

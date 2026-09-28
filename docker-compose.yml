@@ -1,0 +1,30 @@
+# Everything the server runs. Values come from .env beside this file.
+# Only Caddy is published; the app is reachable only through it.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      USERS: ${USERS}
+    volumes:
+      - app-data:/data
+    mem_limit: 400m
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    mem_limit: 128m
+
+volumes:
+  app-data:
+  caddy-data:

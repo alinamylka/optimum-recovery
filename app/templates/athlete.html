@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ athlete.name }} · Optimum Recovery{% endblock %}
+{% block body %}
+<h2 style="margin-top:0">{{ athlete.name }}</h2>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+{% if today %}
+<div class="card">
+  <div class="big"><span class="dot {{ today.signal }}"></span>{{ today.state }}</div>
+  <div>{{ today.advice }}</div>
+  <div class="stats">
+    <div><span>Day</span>{{ today.date }}</div>
+    <div><span>Readiness</span>{{ today.readiness }} / 9</div>
+    <div><span>Fatigue debt</span>{{ today.debt }}</div>
+    <div><span>Days to clear (easy days)</span>{% if today.days_to_clear %}≈ {{ today.days_to_clear }}{% else %}—{% endif %}</div>
+    <div><span>Last full recovery</span>{{ today.last_recovery or "—" }}</div>
+  </div>
+</div>
+
+<div class="card"><div id="chart" style="height:860px"></div></div>
+
+<div class="card scroll">
+  <h3 style="margin-top:0">Weeks</h3>
+  <table>
+    <tr><th>Week of</th><th>Avg readiness</th><th>Debt end</th><th>Debt max</th><th>Days</th><th>Full recovery</th></tr>
+    {% for w in weeks %}
+    <tr>
+      <td>{{ w.start }}</td><td>{{ w.readiness }}</td><td>{{ w.debt_end }}</td><td>{{ w.debt_max }}</td>
+      <td><span class="dot green"></span>{{ w.green }} <span class="dot amber"></span>{{ w.amber }} <span class="dot red"></span>{{ w.red }}</td>
+      <td>{{ "✓" if w.recovered else "" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% else %}
+<div class="card muted">No data yet — sync from intervals.icu or upload a TrainingPeaks export below.</div>
+{% endif %}
+
+<div class="card">
+  <h3 style="margin-top:0">Data</h3>
+  {% if athlete.api_key %}
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/sync">
+    <button>Sync intervals.icu</button>
+    <span class="muted">last sync {{ athlete.synced_at or "never" }}</span>
+  </form>
+  <br>
+  {% endif %}
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/upload" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".zip,.csv" required>
+    <button>Upload TrainingPeaks export</button>
+  </form>
+  <p class="muted">TrainingPeaks: Athlete Account Settings → Account → Export Data → Custom Metrics. Upload the zip as it is.</p>
+  <form method="post" action="/athletes/{{ athlete.id }}/delete" onsubmit="return confirm('Delete {{ athlete.name }} and all data?')">
+    <button class="plain">Delete athlete</button>
+  </form>
+</div>
+
+<details class="card">
+  <summary>How to read this</summary>
+  <p><b>Readiness</b> (−9…+9): today's HRV, resting HR and stress against the athlete's own 60-day baseline. Positive = better than usual.</p>
+  <p><b>Fatigue debt</b>: builds on negative days, drains on positive ones, and drains slower once it is deep. Above {{ params.amber|int }} load is no longer absorbed day to day (overreaching); above {{ params.red|int }} there is a risk of non-functional overreaching. A green line marks a <b>full recovery</b>: the debt went back to zero.</p>
+  <p><b>Rebound</b>: a sudden HRV jump while still in debt — often the body's reaction to overload, not freshness.</p>
+  <p><b>Chronic creep</b>: the weekly HRV average sits below the normal range even though no single day looks bad.</p>
+  <p class="muted">Proof of concept. Thresholds are starting points to be calibrated, not medical advice.</p>
+</details>
+
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<script>
+const days = {{ series|tojson }};
+if (days.length) {
+  const css = getComputedStyle(document.documentElement);
+  const c = n => css.getPropertyValue('--' + n).trim();
+  const x = days.map(d => d.date);
+  const col = s => ({green: c('green'), amber: c('amber'), red: c('red')}[s] || c('line'));
+  const band = (lo, hi, axis, name) => [
+    {x, y: days.map(d => d[lo]), xaxis: 'x', yaxis: axis, mode: 'lines', line: {width: 0}, hoverinfo: 'skip', showlegend: false},
+    {x, y: days.map(d => d[hi]), xaxis: 'x', yaxis: axis, mode: 'lines', line: {width: 0}, fill: 'tonexty',
+     fillcolor: 'rgba(128,128,128,0.18)', name, hoverinfo: 'skip'},
+  ];
+  const traces = [
+    {x, y: days.map(d => d.readiness), type: 'bar', marker: {color: days.map(d => col(d.signal))},
+     text: days.map(d => d.state), hovertemplate: '%{x}<br>readiness %{y}<br>%{text}<extra></extra>', name: 'Readiness', yaxis: 'y'},
+    {x, y: days.map(d => d.debt), yaxis: 'y2', mode: 'lines', fill: 'tozeroy', line: {color: '#888', width: 2}, name: 'Fatigue debt'},
+    ...band('hrv_low', 'hrv_high', 'y3', 'HRV normal range'),
+    {x, y: days.map(d => d.hrv), yaxis: 'y3', mode: 'markers', marker: {size: 4, color: c('accent'), opacity: .45}, name: 'HRV'},
+    {x, y: days.map(d => d.hrv_week), yaxis: 'y3', mode: 'lines', line: {color: c('accent')}, name: 'HRV 7-day'},
+    ...band('rhr_low', 'rhr_high', 'y4', 'RHR normal range'),
+    {x, y: days.map(d => d.rhr), yaxis: 'y4', mode: 'markers', marker: {size: 4, color: c('red'), opacity: .45}, name: 'RHR'},
+    {x, y: days.map(d => d.rhr_week), yaxis: 'y4', mode: 'lines', line: {color: c('red')}, name: 'RHR 7-day'},
+  ];
+  const hline = (y, color, axis) => ({type: 'line', xref: 'paper', x0: 0, x1: 1, yref: axis, y0: y, y1: y, line: {color, dash: 'dash', width: 1}});
+  const shapes = [hline({{ params.amber }}, c('amber'), 'y2'), hline({{ params.red }}, c('red'), 'y2'),
+    ...days.filter(d => d.recovered).map(d => ({type: 'line', x0: d.date, x1: d.date, yref: 'paper', y0: 0, y1: 1,
+      line: {color: c('green'), dash: 'dot', width: 1}}))];
+  const axis = (domain, title) => ({domain, title: {text: title}, gridcolor: c('line'), zerolinecolor: c('line')});
+  Plotly.newPlot('chart', traces, {
+    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: c('text')},
+    margin: {l: 60, r: 10, t: 10, b: 30}, showlegend: false, hovermode: 'x unified', shapes,
+    xaxis: {gridcolor: c('line')},
+    yaxis: {...axis([0.79, 1], 'Readiness'), range: [-9.5, 9.5]},
+    yaxis2: {...axis([0.53, 0.75], 'Fatigue debt'), rangemode: 'tozero'},
+    yaxis3: axis([0.27, 0.49], 'HRV (ms)'),
+    yaxis4: axis([0, 0.23], 'Resting HR'),
+  }, {responsive: true, displaylogo: false});
+}
+</script>
+{% endblock %}

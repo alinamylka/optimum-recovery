@@ -1,0 +1,13 @@
+# Health data and screenshots stay local: the repository is public.
+*.zip
+*.csv
+*.jpeg
+*.jpg
+*.png
+data/
+.env
+__pycache__/
+.venv/
+.pytest_cache/
+.idea/
+.DS_Store
