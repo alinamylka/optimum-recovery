@@ -4,6 +4,7 @@
 {% for c in cards %}
   <a class="card" href="/athletes/{{ c.athlete.id }}" style="text-decoration:none;color:inherit">
     <div style="font-weight:600">{{ c.athlete.name }}</div>
+    {% if c.shared_by %}<div class="muted" style="font-size:13px">shared by {{ c.shared_by }}</div>{% endif %}
     {% for m, today in c.signals %}
       <div style="margin-top:6px">
         {% if today %}<span class="dot {{ today.signal }}"></span><b>{{ today.state }}</b>

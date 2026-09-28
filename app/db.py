@@ -28,6 +28,11 @@ CREATE TABLE IF NOT EXISTS metric (
     stress REAL,
     PRIMARY KEY (athlete_id, date)
 );
+CREATE TABLE IF NOT EXISTS share (
+    athlete_id INTEGER NOT NULL REFERENCES athlete(id) ON DELETE CASCADE,
+    username TEXT NOT NULL,
+    PRIMARY KEY (athlete_id, username)
+);
 """
 
 
@@ -59,6 +64,43 @@ def athlete(owner: str, athlete_id: int) -> sqlite3.Row | None:
         return conn.execute(
             "SELECT * FROM athlete WHERE id = ? AND owner = ?", (athlete_id, owner)
         ).fetchone()
+
+
+def shared_with(username: str) -> list[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT a.* FROM athlete a JOIN share s ON s.athlete_id = a.id WHERE s.username = ? ORDER BY a.name",
+            (username,),
+        ).fetchall()
+
+
+def visible_athlete(username: str, athlete_id: int) -> sqlite3.Row | None:
+    """The athlete if this user owns it or it was shared with them."""
+    with connect() as conn:
+        return conn.execute(
+            """
+            SELECT a.* FROM athlete a
+            WHERE a.id = ? AND (a.owner = ? OR EXISTS (
+                SELECT 1 FROM share s WHERE s.athlete_id = a.id AND s.username = ?))
+            """,
+            (athlete_id, username, username),
+        ).fetchone()
+
+
+def shares(athlete_id: int) -> list[str]:
+    with connect() as conn:
+        rows = conn.execute("SELECT username FROM share WHERE athlete_id = ? ORDER BY username", (athlete_id,))
+        return [r["username"] for r in rows]
+
+
+def add_share(athlete_id: int, username: str) -> None:
+    with connect() as conn:
+        conn.execute("INSERT OR IGNORE INTO share (athlete_id, username) VALUES (?, ?)", (athlete_id, username))
+
+
+def remove_share(athlete_id: int, username: str) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM share WHERE athlete_id = ? AND username = ?", (athlete_id, username))
 
 
 def add_athlete(owner: str, name: str, intervals_id: str | None, api_key: str | None) -> int:

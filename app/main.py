@@ -53,11 +53,11 @@ def healthz():
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, owner: str = Depends(user)):
     cards = []
-    for a in db.athletes(owner):
+    for a in [*db.athletes(owner), *db.shared_with(owner)]:
         _refresh_if_stale(a)
         data = db.metrics(a["id"])
         signals = [(m, _latest(m, m.analyse(data))) for m in models.MODELS.values()]
-        cards.append({"athlete": a, "signals": signals})
+        cards.append({"athlete": a, "signals": signals, "shared_by": a["owner"] if a["owner"] != owner else None})
     return templates.TemplateResponse(request, "index.html", {"owner": owner, "cards": cards})
 
 
@@ -99,7 +99,8 @@ def delete(athlete_id: int, owner: str = Depends(user)):
 
 @app.get("/athletes/{athlete_id}", response_class=HTMLResponse)
 def dashboard(request: Request, athlete_id: int, model: str | None = None, owner: str = Depends(user)):
-    a = _owned(owner, athlete_id)
+    a = _visible(owner, athlete_id)
+    mine = a["owner"] == owner
     error = _refresh_if_stale(a)
     chosen = models.get(model)
     result = chosen.analyse(db.metrics(a["id"]))
@@ -115,6 +116,9 @@ def dashboard(request: Request, athlete_id: int, model: str | None = None, owner
             "weeks": _weeks(result),
             "params": Params(),
             "error": error,
+            "mine": mine,
+            "shares": db.shares(a["id"]) if mine else [],
+            "share_candidates": sorted(set(_users()) - {owner} - set(db.shares(a["id"]))) if mine else [],
         },
     )
 
@@ -122,13 +126,40 @@ def dashboard(request: Request, athlete_id: int, model: str | None = None, owner
 @app.get("/api/athletes/{athlete_id}/analysis")
 def analysis(athlete_id: int, model: str | None = None, owner: str = Depends(user)):
     """The whole analysis as JSON, for other apps (e.g. Fuel the Train)."""
-    a = _owned(owner, athlete_id)
+    a = _visible(owner, athlete_id)
     chosen = models.get(model)
     result = chosen.analyse(db.metrics(a["id"]))
     body = {"athlete": a["name"], "model": chosen.key, "days": _series(result)}
     if chosen.key == "debt":
         body["params"] = params_dict()
     return JSONResponse(body)
+
+
+@app.post("/athletes/{athlete_id}/share")
+def share(athlete_id: int, owner: str = Depends(user), username: str = Form(...)):
+    a = _owned(owner, athlete_id)
+    if username in _users() and username != owner:
+        db.add_share(a["id"], username)
+    return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+
+
+@app.post("/athletes/{athlete_id}/unshare")
+def unshare(athlete_id: int, owner: str = Depends(user), username: str = Form(...)):
+    db.remove_share(_owned(owner, athlete_id)["id"], username)
+    return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+
+
+@app.exception_handler(404)
+async def not_found(request: Request, exc):
+    return templates.TemplateResponse(request, "not_found.html", {}, status_code=404)
+
+
+def _visible(username: str, athlete_id: int):
+    """Owners and the users they shared with may look; only the owner may change anything."""
+    a = db.visible_athlete(username, athlete_id)
+    if a is None:
+        raise HTTPException(404)
+    return a
 
 
 def _owned(owner: str, athlete_id: int):

@@ -2,6 +2,7 @@
 {% block title %}{{ athlete.name }} · Optimum Recovery{% endblock %}
 {% block body %}
 <h2 style="margin-top:0">{{ athlete.name }}</h2>
+{% if not mine %}<p class="muted">Shared with you by {{ athlete.owner }} — view only.</p>{% endif %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 
 <nav class="tabs">
@@ -51,6 +52,7 @@
 <div class="card muted">No data yet — sync from intervals.icu or upload a TrainingPeaks export below.</div>
 {% endif %}
 
+{% if mine %}
 <div class="card">
   <h3 style="margin-top:0">Data</h3>
   {% if athlete.api_key %}
@@ -69,6 +71,23 @@
     <button class="plain">Delete athlete</button>
   </form>
 </div>
+
+<div class="card">
+  <h3 style="margin-top:0">Sharing</h3>
+  <p class="muted">People you share with can see the charts, but can't change data, see the API key or delete the athlete.</p>
+  {% for u in shares %}
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/unshare" style="margin-bottom:6px">
+    <input type="hidden" name="username" value="{{ u }}"><span>{{ u }}</span><button class="plain">Stop sharing</button>
+  </form>
+  {% endfor %}
+  {% if share_candidates %}
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/share">
+    <select name="username">{% for u in share_candidates %}<option>{{ u }}</option>{% endfor %}</select>
+    <button>Share</button>
+  </form>
+  {% elif not shares %}<p class="muted">No other logins yet.</p>{% endif %}
+</div>
+{% endif %}
 
 <details class="card">
   <summary>How to read this</summary>
