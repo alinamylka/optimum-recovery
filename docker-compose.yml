@@ -22,6 +22,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
       - caddy-data:/data
     mem_limit: 128m
 

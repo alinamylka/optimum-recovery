@@ -11,3 +11,5 @@ __pycache__/
 .pytest_cache/
 .idea/
 .DS_Store
+# Sites of other apps, written on the server
+sites/*.caddy

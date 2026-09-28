@@ -3,3 +3,6 @@
 	encode gzip
 	reverse_proxy app:8000
 }
+
+# Other apps on this server add their own site here (e.g. Fuel the Train, written by its deploy script).
+import sites/*.caddy
