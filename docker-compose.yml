@@ -6,6 +6,7 @@ services:
     restart: unless-stopped
     environment:
       USERS: ${USERS}
+      ADMINS: ${ADMINS}
     volumes:
       - app-data:/data
     mem_limit: 400m

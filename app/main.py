@@ -1,9 +1,8 @@
-"""Web app: athletes, data upload/sync, and the recovery dashboard."""
+"""Web app: athletes, data upload/sync, the recovery dashboard and user management."""
 
 from __future__ import annotations
 
-import os
-import secrets
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -11,38 +10,24 @@ import httpx
 import pandas as pd
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 
-from . import db
-from . import models
+from . import auth, db, models
+from .auth import Login
 from .model import Params, params_dict
 from .sources import fetch_intervals, parse_trainingpeaks
 
 app = FastAPI(title="Optimum Recovery")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-security = HTTPBasic()
 
 # intervals.icu athletes are refreshed on view when their data is older than this.
 STALE_AFTER = timedelta(hours=6)
 
 
-def _users() -> dict[str, str]:
-    """USERS="alina:secret,arek:secret" — each user sees only their own athletes."""
-    pairs = (p.split(":", 1) for p in os.environ.get("USERS", "").split(",") if ":" in p)
-    return {u.strip(): pw.strip() for u, pw in pairs}
-
-
-def user(credentials: HTTPBasicCredentials = Depends(security)) -> str:
-    expected = _users().get(credentials.username)
-    if expected is None or not secrets.compare_digest(credentials.password, expected):
-        raise HTTPException(401, headers={"WWW-Authenticate": "Basic"})
-    return credentials.username
-
-
 @app.on_event("startup")
 def startup() -> None:
     db.init()
+    auth.seed_from_env()
 
 
 @app.get("/healthz")
@@ -51,32 +36,36 @@ def healthz():
 
 
 @app.get("/", response_class=HTMLResponse)
-def index(request: Request, owner: str = Depends(user)):
-    cards = []
-    for a in [*db.athletes(owner), *db.shared_with(owner)]:
+def index(request: Request, me: Login = Depends(auth.current)):
+    """Admins see every athlete grouped by coach; coaches their own and those shared with them."""
+    athletes = db.all_athletes() if me.admin else [*db.athletes(me.username), *db.shared_with(me.username)]
+    groups: dict[str, list[dict]] = {}
+    for a in athletes:
         _refresh_if_stale(a)
         data = db.metrics(a["id"])
         signals = [(m, _latest(m, m.analyse(data))) for m in models.MODELS.values()]
-        cards.append({"athlete": a, "signals": signals, "shared_by": a["owner"] if a["owner"] != owner else None})
-    return templates.TemplateResponse(request, "index.html", {"owner": owner, "cards": cards})
+        shared_by = a["owner"] if a["owner"] != me.username and not me.admin else None
+        heading = a["owner"] if me.admin else ("Shared with you" if shared_by else "Your athletes")
+        groups.setdefault(heading, []).append({"athlete": a, "signals": signals, "shared_by": shared_by})
+    return templates.TemplateResponse(request, "index.html", {"me": me, "groups": groups})
 
 
 @app.post("/athletes")
 def create(
-    owner: str = Depends(user),
+    me: Login = Depends(auth.current),
     name: str = Form(...),
     intervals_id: str = Form(""),
     api_key: str = Form(""),
 ):
-    athlete_id = db.add_athlete(owner, name.strip(), intervals_id.strip(), api_key.strip())
+    athlete_id = db.add_athlete(me.username, name.strip(), intervals_id.strip(), api_key.strip())
     if api_key.strip():
-        _sync(db.athlete(owner, athlete_id))
+        _sync(db.athlete_by_id(athlete_id))
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
 
 
 @app.post("/athletes/{athlete_id}/upload")
-async def upload(athlete_id: int, owner: str = Depends(user), file: UploadFile = File(...)):
-    a = _owned(owner, athlete_id)
+async def upload(athlete_id: int, me: Login = Depends(auth.current), file: UploadFile = File(...)):
+    a = _manageable(me, athlete_id)
     try:
         frame = parse_trainingpeaks(await file.read())
     except Exception as e:  # a wrong file should say so, not return a 500
@@ -86,28 +75,32 @@ async def upload(athlete_id: int, owner: str = Depends(user), file: UploadFile =
 
 
 @app.post("/athletes/{athlete_id}/sync")
-def sync(athlete_id: int, owner: str = Depends(user)):
-    _sync(_owned(owner, athlete_id))
+def sync(athlete_id: int, me: Login = Depends(auth.current)):
+    _sync(_manageable(me, athlete_id))
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
 
 
 @app.post("/athletes/{athlete_id}/delete")
-def delete(athlete_id: int, owner: str = Depends(user)):
-    db.delete_athlete(owner, _owned(owner, athlete_id)["id"])
+def delete(athlete_id: int, me: Login = Depends(auth.current)):
+    a = _manageable(me, athlete_id)
+    db.delete_athlete(a["owner"], a["id"])
     return RedirectResponse("/", status_code=303)
 
 
 @app.get("/athletes/{athlete_id}", response_class=HTMLResponse)
-def dashboard(request: Request, athlete_id: int, model: str | None = None, owner: str = Depends(user)):
-    a = _visible(owner, athlete_id)
-    mine = a["owner"] == owner
+def dashboard(request: Request, athlete_id: int, model: str | None = None, me: Login = Depends(auth.current)):
+    a = _visible(me, athlete_id)
+    can_manage = me.admin or a["owner"] == me.username
     error = _refresh_if_stale(a)
     chosen = models.get(model)
     result = chosen.analyse(db.metrics(a["id"]))
+    shares = db.shares(a["id"]) if can_manage else []
+    candidates = [u["username"] for u in db.logins() if u["username"] not in {a["owner"], *shares}]
     return templates.TemplateResponse(
         request,
         "athlete.html",
         {
+            "me": me,
             "athlete": a,
             "model": chosen,
             "models": models.MODELS.values(),
@@ -116,17 +109,17 @@ def dashboard(request: Request, athlete_id: int, model: str | None = None, owner
             "weeks": _weeks(result),
             "params": Params(),
             "error": error,
-            "mine": mine,
-            "shares": db.shares(a["id"]) if mine else [],
-            "share_candidates": sorted(set(_users()) - {owner} - set(db.shares(a["id"]))) if mine else [],
+            "mine": can_manage,
+            "shares": shares,
+            "share_candidates": candidates if can_manage else [],
         },
     )
 
 
 @app.get("/api/athletes/{athlete_id}/analysis")
-def analysis(athlete_id: int, model: str | None = None, owner: str = Depends(user)):
+def analysis(athlete_id: int, model: str | None = None, me: Login = Depends(auth.current)):
     """The whole analysis as JSON, for other apps (e.g. Fuel the Train)."""
-    a = _visible(owner, athlete_id)
+    a = _visible(me, athlete_id)
     chosen = models.get(model)
     result = chosen.analyse(db.metrics(a["id"]))
     body = {"athlete": a["name"], "model": chosen.key, "days": _series(result)}
@@ -136,17 +129,68 @@ def analysis(athlete_id: int, model: str | None = None, owner: str = Depends(use
 
 
 @app.post("/athletes/{athlete_id}/share")
-def share(athlete_id: int, owner: str = Depends(user), username: str = Form(...)):
-    a = _owned(owner, athlete_id)
-    if username in _users() and username != owner:
+def share(athlete_id: int, me: Login = Depends(auth.current), username: str = Form(...)):
+    a = _manageable(me, athlete_id)
+    if db.login(username) and username != a["owner"]:
         db.add_share(a["id"], username)
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
 
 
 @app.post("/athletes/{athlete_id}/unshare")
-def unshare(athlete_id: int, owner: str = Depends(user), username: str = Form(...)):
-    db.remove_share(_owned(owner, athlete_id)["id"], username)
+def unshare(athlete_id: int, me: Login = Depends(auth.current), username: str = Form(...)):
+    db.remove_share(_manageable(me, athlete_id)["id"], username)
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+
+
+@app.get("/users", response_class=HTMLResponse)
+def users(request: Request, me: Login = Depends(auth.admin)):
+    return templates.TemplateResponse(
+        request, "users.html", {"me": me, "users": db.logins(), "roles": auth.ROLES, "notice": None}
+    )
+
+
+@app.post("/users", response_class=HTMLResponse)
+def add_user(
+    request: Request,
+    me: Login = Depends(auth.admin),
+    username: str = Form(...),
+    role: str = Form("coach"),
+    password: str = Form(""),
+):
+    username = username.strip().lower()
+    if not username or ":" in username or role not in auth.ROLES:
+        raise HTTPException(400, "Invalid username or role")
+    password = password.strip() or auth.new_password()
+    try:
+        db.add_login(username, auth.hash_password(password), role)
+    except sqlite3.IntegrityError:
+        raise HTTPException(400, f"User {username} already exists")
+    return _users_page(request, me, f"Created {username} ({role}). Password: {password}")
+
+
+@app.post("/users/{username}/reset", response_class=HTMLResponse)
+def reset_password(request: Request, username: str, me: Login = Depends(auth.admin)):
+    if not db.login(username):
+        raise HTTPException(404)
+    password = auth.new_password()
+    db.update_login(username, password_hash=auth.hash_password(password))
+    return _users_page(request, me, f"New password for {username}: {password}")
+
+
+@app.post("/users/{username}/role")
+def change_role(username: str, me: Login = Depends(auth.admin), role: str = Form(...)):
+    # An admin can't demote themselves: there would be nobody left to undo it.
+    if role in auth.ROLES and db.login(username) and username != me.username:
+        db.update_login(username, role=role)
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.post("/users/{username}/delete")
+def delete_user(username: str, me: Login = Depends(auth.admin)):
+    row = next((u for u in db.logins() if u["username"] == username), None)
+    if row and username != me.username and row["athletes"] == 0:
+        db.delete_login(username)
+    return RedirectResponse("/users", status_code=303)
 
 
 @app.exception_handler(404)
@@ -154,16 +198,23 @@ async def not_found(request: Request, exc):
     return templates.TemplateResponse(request, "not_found.html", {}, status_code=404)
 
 
-def _visible(username: str, athlete_id: int):
-    """Owners and the users they shared with may look; only the owner may change anything."""
-    a = db.visible_athlete(username, athlete_id)
+def _users_page(request: Request, me: Login, notice: str):
+    return templates.TemplateResponse(
+        request, "users.html", {"me": me, "users": db.logins(), "roles": auth.ROLES, "notice": notice}
+    )
+
+
+def _visible(me: Login, athlete_id: int):
+    """Admins see everything; others the athletes they own or that were shared with them."""
+    a = db.athlete_by_id(athlete_id) if me.admin else db.visible_athlete(me.username, athlete_id)
     if a is None:
         raise HTTPException(404)
     return a
 
 
-def _owned(owner: str, athlete_id: int):
-    a = db.athlete(owner, athlete_id)
+def _manageable(me: Login, athlete_id: int):
+    """Only the owner, or an admin, may change an athlete."""
+    a = db.athlete_by_id(athlete_id) if me.admin else db.athlete(me.username, athlete_id)
     if a is None:
         raise HTTPException(404)
     return a

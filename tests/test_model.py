@@ -64,3 +64,11 @@ def test_hrv_guided_follows_the_swc_rule():
     low = result["hrv_low"].dropna()
     changed = low.index[low.diff().fillna(0).ne(0)]
     assert all((day - low.index[0]).days % 28 == 0 for day in changed)
+
+
+def test_password_hash_roundtrip():
+    from app import auth
+
+    stored = auth.hash_password("s3cret")
+    assert auth._matches(stored, "s3cret")
+    assert not auth._matches(stored, "wrong")

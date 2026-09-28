@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% block body %}
+{% for heading, cards in groups.items() %}
+<h3>{{ heading }}{% if me.admin %} <span class="muted" style="font-weight:400">· coach</span>{% endif %}</h3>
 <div class="grid">
 {% for c in cards %}
   <a class="card" href="/athletes/{{ c.athlete.id }}" style="text-decoration:none;color:inherit">
@@ -15,6 +17,9 @@
   </a>
 {% endfor %}
 </div>
+{% else %}
+<p class="muted">No athletes yet — add the first one below.</p>
+{% endfor %}
 
 <div class="card">
   <h3 style="margin-top:0">Add athlete</h3>

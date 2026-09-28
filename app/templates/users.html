@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Users · Optimum Recovery{% endblock %}
+{% block body %}
+<h2 style="margin-top:0">Users</h2>
+{% if notice %}
+<div class="card" style="border-color:var(--green)">
+  <b>{{ notice }}</b>
+  <div class="muted">Copy it now — it is stored only as a hash and can't be shown again. Send it to the person yourself.</div>
+</div>
+{% endif %}
+
+<div class="card scroll">
+  <table>
+    <tr><th>Login</th><th>Role</th><th>Own athletes</th><th>Shared with them</th><th>Since</th><th></th></tr>
+    {% for u in users %}
+    <tr>
+      <td><b>{{ u.username }}</b>{% if u.username == me.username %} <span class="muted">(you)</span>{% endif %}</td>
+      <td>
+        {% if u.username == me.username %}{{ u.role }}{% else %}
+        <form method="post" action="/users/{{ u.username }}/role" class="row">
+          <select name="role" onchange="this.form.submit()">
+            {% for r in roles %}<option {{ 'selected' if r == u.role }}>{{ r }}</option>{% endfor %}
+          </select>
+        </form>
+        {% endif %}
+      </td>
+      <td>{{ u.athletes }}</td>
+      <td>{{ u.shared }}</td>
+      <td class="muted">{{ u.created_at[:10] }}</td>
+      <td>
+        <form method="post" action="/users/{{ u.username }}/reset" style="display:inline"
+              onsubmit="return confirm('Generate a new password for {{ u.username }}? The old one stops working.')">
+          <button class="plain">New password</button>
+        </form>
+        {% if u.username != me.username and u.athletes == 0 %}
+        <form method="post" action="/users/{{ u.username }}/delete" style="display:inline"
+              onsubmit="return confirm('Delete login {{ u.username }}?')">
+          <button class="plain">Delete</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Add user</h3>
+  <form class="row" method="post" action="/users">
+    <input name="username" placeholder="Login" required pattern="[A-Za-z0-9._-]+">
+    <select name="role"><option value="coach">coach</option><option value="admin">admin</option></select>
+    <input name="password" placeholder="Password (empty = generate)">
+    <button>Add</button>
+  </form>
+  <p class="muted" style="margin-bottom:0">
+    <b>admin</b> sees every athlete and manages users. <b>coach</b> sees the athletes they added and those shared with them.
+    A login with athletes can't be deleted — delete or hand over the athletes first.
+  </p>
+</div>
+{% endblock %}

@@ -2,7 +2,8 @@
 {% block title %}{{ athlete.name }} · Optimum Recovery{% endblock %}
 {% block body %}
 <h2 style="margin-top:0">{{ athlete.name }}</h2>
-{% if not mine %}<p class="muted">Shared with you by {{ athlete.owner }} — view only.</p>{% endif %}
+{% if not mine %}<p class="muted">Shared with you by {{ athlete.owner }} — view only.</p>
+{% elif athlete.owner != me.username %}<p class="muted">Coach: {{ athlete.owner }} (you see it as admin)</p>{% endif %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 
 <nav class="tabs">

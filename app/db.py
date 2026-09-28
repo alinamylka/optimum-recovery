@@ -28,6 +28,12 @@ CREATE TABLE IF NOT EXISTS metric (
     stress REAL,
     PRIMARY KEY (athlete_id, date)
 );
+CREATE TABLE IF NOT EXISTS login (
+    username TEXT PRIMARY KEY,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('admin', 'coach')),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS share (
     athlete_id INTEGER NOT NULL REFERENCES athlete(id) ON DELETE CASCADE,
     username TEXT NOT NULL,
@@ -52,6 +58,54 @@ def connect():
 def init() -> None:
     with connect() as conn:
         conn.executescript(SCHEMA)
+
+
+def login(username: str) -> sqlite3.Row | None:
+    with connect() as conn:
+        return conn.execute("SELECT * FROM login WHERE username = ?", (username,)).fetchone()
+
+
+def logins() -> list[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute(
+            """
+            SELECT l.username, l.role, l.created_at,
+                   (SELECT COUNT(*) FROM athlete a WHERE a.owner = l.username) AS athletes,
+                   (SELECT COUNT(*) FROM share s WHERE s.username = l.username) AS shared
+            FROM login l ORDER BY l.role, l.username
+            """
+        ).fetchall()
+
+
+def add_login(username: str, password_hash: str, role: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO login (username, password_hash, role) VALUES (?, ?, ?)", (username, password_hash, role)
+        )
+
+
+def update_login(username: str, password_hash: str | None = None, role: str | None = None) -> None:
+    with connect() as conn:
+        if password_hash:
+            conn.execute("UPDATE login SET password_hash = ? WHERE username = ?", (password_hash, username))
+        if role:
+            conn.execute("UPDATE login SET role = ? WHERE username = ?", (role, username))
+
+
+def delete_login(username: str) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM share WHERE username = ?", (username,))
+        conn.execute("DELETE FROM login WHERE username = ?", (username,))
+
+
+def all_athletes() -> list[sqlite3.Row]:
+    with connect() as conn:
+        return conn.execute("SELECT * FROM athlete ORDER BY owner, name").fetchall()
+
+
+def athlete_by_id(athlete_id: int) -> sqlite3.Row | None:
+    with connect() as conn:
+        return conn.execute("SELECT * FROM athlete WHERE id = ?", (athlete_id,)).fetchone()
 
 
 def athletes(owner: str) -> list[sqlite3.Row]:
