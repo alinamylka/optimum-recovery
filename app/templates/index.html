@@ -4,12 +4,13 @@
 {% for c in cards %}
   <a class="card" href="/athletes/{{ c.athlete.id }}" style="text-decoration:none;color:inherit">
     <div style="font-weight:600">{{ c.athlete.name }}</div>
-    {% if c.today %}
-      <div class="big"><span class="dot {{ c.today.signal }}"></span>{{ c.today.state }}</div>
-      <div class="muted">{{ c.today.date }} · readiness {{ c.today.readiness }} · debt {{ c.today.debt }}</div>
-    {% else %}
-      <div class="muted">No data yet</div>
-    {% endif %}
+    {% for m, today in c.signals %}
+      <div style="margin-top:6px">
+        {% if today %}<span class="dot {{ today.signal }}"></span><b>{{ today.state }}</b>
+        {% else %}<span class="dot"></span><span class="muted">No data</span>{% endif %}
+        <div class="muted" style="font-size:13px">{{ m.name }}{% if today %} · {{ today.date }}{% endif %}</div>
+      </div>
+    {% endfor %}
   </a>
 {% endfor %}
 </div>

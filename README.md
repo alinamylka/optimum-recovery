@@ -8,20 +8,24 @@ being absorbed.
 Data comes from **intervals.icu** (API key, syncs by itself) or from a
 **TrainingPeaks metrics export** (Account Settings → Export Data → Custom Metrics, upload the zip).
 
-## The model
+## Models
 
-`app/model.py`, built from the HRV-guided training literature:
+The athlete page has a model switch; each model lists its sources with DOI links.
 
-| Piece | What it does | Source |
-|---|---|---|
-| Baseline | lnRMSSD, RHR and stress against the athlete's own rolling 60 days; normal range = baseline ± 0.5 SD | Plews et al. 2013, Vesterinen et al. 2016 |
-| Readiness | −9…+9 from the 3-day average vs baseline (HRV 50 %, RHR 30 %, stress 20 %) | |
-| Fatigue debt | grows on negative days, decays and drains on positive ones, drains slower when deep | Banister impulse-response; Meeusen et al. 2013 |
-| Full recovery | debt back to zero after a real build-up | |
-| Rebound | HRV spike while in debt counts as a warning, not freshness | Le Meur et al. 2013 |
-| Chronic creep | weekly HRV below the normal range | Plews et al. 2012 |
+**HRV-guided training — published** (`app/hrv_guided.py`), default. Implemented
+from the methods of Javaloyes et al. 2020 (J Strength Cond Res 34(6):1511–1518,
+[doi:10.1519/JSC.0000000000003337](https://doi.org/10.1519/JSC.0000000000003337)),
+following Vesterinen et al. 2016 and Javaloyes et al. 2019:
+7-day average of ln(RMSSD); normal range (SWC) = mean ± 0.5 SD, from a 2-week
+baseline and then recalculated every 4 weeks from the previous 4 weeks; inside →
+high intensity, outside (either way) → low intensity or rest. Plus the 7-day
+coefficient of variation (Plews et al. 2012) as an informational line.
 
-Thresholds (`Params`) are starting points to calibrate on real athletes, not validated values.
+**Fatigue debt — experimental** (`app/model.py`). Own model: readiness from HRV,
+RHR and stress against a 60-day baseline, and a debt that builds and clears.
+Ideas from Plews 2013, Banister/Calvert 1976, Meeusen 2013, Le Meur 2013; the
+formula, weights and thresholds are not from any paper and are not validated.
+
 Not medical advice.
 
 ## Run locally

@@ -49,3 +49,18 @@ def test_trainingpeaks_prefers_morning_reading():
     assert frame.loc["2026-01-01", "hrv"] == 61.5
     assert frame.loc["2026-01-01", "stress"] == 14
     assert frame.loc["2026-01-02", "rhr"] == 50
+
+
+def test_hrv_guided_follows_the_swc_rule():
+    from app import hrv_guided
+
+    data = steady(90)
+    data.iloc[50:60, 0] -= 20  # a clear HRV drop pushes the 7-day average below the range
+    result = hrv_guided.analyse(data)
+    assert result["signal"].iloc[:14].isna().all()  # still collecting the 2-week baseline
+    assert result["state"].iloc[58] == "Below the normal range"
+    assert result["signal"].iloc[58] == "amber"
+    # the range only changes at the 4-week boundaries after the baseline
+    low = result["hrv_low"].dropna()
+    changed = low.index[low.diff().fillna(0).ne(0)]
+    assert all((day - low.index[0]).days % 28 == 0 for day in changed)
