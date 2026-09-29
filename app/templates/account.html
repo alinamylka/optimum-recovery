@@ -11,6 +11,9 @@
   <form class="row" method="post" action="/account">
     <input name="email" type="email" value="{{ row.email or '' }}" placeholder="you@example.com" style="min-width:260px">
     <label><input type="checkbox" name="weekly" value="1" {{ 'checked' if row.weekly_mail }}> send the Monday email</label>
+    <label>Language (email and summaries)
+      <select name="language">{% for code, name in languages.items() %}<option value="{{ code }}" {{ 'selected' if row.language == code }}>{{ name }}</option>{% endfor %}</select>
+    </label>
     <button>Save</button>
   </form>
   <p style="margin-bottom:0">

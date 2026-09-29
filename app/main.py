@@ -70,7 +70,7 @@ def index(request: Request, me: Login = Depends(auth.current)):
 def _card(me: Login, a) -> dict:
     _refresh_if_stale(a)
     data = db.metrics(a["id"])
-    signals = [(m, _latest(m, m.analyse(data))) for m in models.MODELS.values()]
+    signals = [(m, _latest(m, m.analyse(data), me.language)) for m in models.MODELS.values()]
     shared_by = a["owner"] if a["owner"] != me.username and a["login"] != me.username and not me.admin else None
     return {"athlete": a, "signals": signals, "shared_by": shared_by}
 
@@ -186,9 +186,9 @@ def _athlete_page(
             "athlete": a,
             "model": chosen,
             "models": models.MODELS.values(),
-            "today": _latest(chosen, result),
+            "today": _latest(chosen, result, me.language),
             "series": _series(result),
-            "weeks": _weeks(result),
+            "weeks": _weeks(result, me.language),
             "params": Params(),
             "error": error,
             "notice": notice,
@@ -244,19 +244,34 @@ def account_page(request: Request, me: Login = Depends(auth.current), notice: st
     return templates.TemplateResponse(
         request,
         "account.html",
-        {"me": me, "row": db.login(me.username), "configured": mailer.configured(), "notice": notice, "error": error},
+        {
+            "me": me,
+            "row": db.login(me.username),
+            "configured": mailer.configured(),
+            "languages": describe.LANGUAGES,
+            "notice": notice,
+            "error": error,
+        },
     )
 
 
 @app.post("/account", response_class=HTMLResponse)
-def save_account(request: Request, me: Login = Depends(auth.current), email: str = Form(""), weekly: str = Form("")):
+def save_account(
+    request: Request,
+    me: Login = Depends(auth.current),
+    email: str = Form(""),
+    weekly: str = Form(""),
+    language: str = Form("pl"),
+):
     db.set_mail(me.username, email.strip(), bool(weekly))
-    return account_page(request, me, notice="Saved.")
+    if language in describe.LANGUAGES:
+        db.set_language(me.username, language)
+    return RedirectResponse("/account", status_code=303)
 
 
 @app.get("/account/preview", response_class=HTMLResponse)
 def preview_mail(me: Login = Depends(auth.current)):
-    built = mailer.report(me.username, me.role)
+    built = mailer.report(me.username, me.role, language=me.language)
     if built is None:
         return HTMLResponse("<p>No athletes to report on yet.</p>")
     return HTMLResponse(built[1])
@@ -265,7 +280,7 @@ def preview_mail(me: Login = Depends(auth.current)):
 @app.post("/account/test", response_class=HTMLResponse)
 def test_mail(request: Request, me: Login = Depends(auth.current)):
     row = db.login(me.username)
-    built = mailer.report(me.username, me.role)
+    built = mailer.report(me.username, me.role, language=me.language)
     if not row["email"] or built is None or not mailer.configured():
         return account_page(request, me, error="Nothing to send: add an email address and athletes first.")
     try:
@@ -391,7 +406,7 @@ def _refresh_if_stale(a) -> str | None:
     return _sync(a)
 
 
-def _latest(m: models.Model, result: pd.DataFrame) -> dict | None:
+def _latest(m: models.Model, result: pd.DataFrame, lang: str = "en") -> dict | None:
     if result.empty:
         return None
     known = result[result["signal"].notna()]
@@ -414,8 +429,8 @@ def _latest(m: models.Model, result: pd.DataFrame) -> dict | None:
     return {
         "date": known.index[-1].date().isoformat(),
         "signal": row["signal"],
-        "advice": m.advice[row["signal"]],
-        "state": row["state"],
+        "advice": describe.advice(m.key, row["signal"], m.advice[row["signal"]], lang),
+        "state": describe.state(row["state"], lang),
         "stats": stats,
     }
 
@@ -434,7 +449,7 @@ def _series(result: pd.DataFrame) -> list[dict]:
     return frame.to_dict(orient="records")
 
 
-def _weeks(result: pd.DataFrame) -> list[dict]:
+def _weeks(result: pd.DataFrame, lang: str = "en") -> list[dict]:
     """A Monday-to-Sunday summary, newest first — what a coach reads when planning the week."""
     if result.empty:
         return []
@@ -447,7 +462,7 @@ def _weeks(result: pd.DataFrame) -> list[dict]:
         counts = week["signal"].value_counts()
         row = {
             "start": start.date().isoformat(),
-            "description": describe.week(week, previous),
+            "description": describe.week(week, previous, lang),
             "green": int(counts.get("green", 0)),
             "amber": int(counts.get("amber", 0)),
             "red": int(counts.get("red", 0)),

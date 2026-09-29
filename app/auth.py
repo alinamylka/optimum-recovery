@@ -23,6 +23,7 @@ class Login:
     username: str
     role: str
     profile_id: int | None = None  # the athlete profile that is this person, if any
+    language: str = "pl"
 
     @property
     def admin(self) -> bool:
@@ -53,7 +54,7 @@ def current(credentials: HTTPBasicCredentials = Depends(security)) -> Login:
     if row is None or not _matches(row["password_hash"], credentials.password):
         raise HTTPException(401, headers={"WWW-Authenticate": "Basic"})
     profile = db.own_profile(row["username"])
-    return Login(row["username"], row["role"], profile["id"] if profile else None)
+    return Login(row["username"], row["role"], profile["id"] if profile else None, row["language"] or "pl")
 
 
 def coach(me: Login = Depends(current)) -> Login:

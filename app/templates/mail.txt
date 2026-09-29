@@ -1,11 +1,11 @@
-Optimum Recovery — week {{ start.strftime('%d.%m') }}–{{ end.strftime('%d.%m.%Y') }}
+Optimum Recovery — {{ 'tydzień' if pl else 'week' }} {{ start.strftime('%d.%m') }}–{{ end.strftime('%d.%m.%Y') }}
 {% for e in entries %}
 == {{ e.athlete.name }} ==
 {% for m in e.models %}
 {{ m.model.name }}
-{% if m.today %}Latest ({{ m.today.date }}): {{ m.today.state }} — {{ m.today.advice }}{% else %}No data.{% endif %}
-Last week: {{ m.summary }}
+{% if m.today %}{{ 'Ostatnie dane' if pl else 'Latest' }} ({{ m.today.date }}): {{ m.today.state }} — {{ m.today.advice }}{% else %}{{ 'Brak danych.' if pl else 'No data.' }}{% endif %}
+{{ 'Zeszły tydzień' if pl else 'Last week' }}: {{ m.summary }}
 {% endfor %}
-Charts: {{ e.url }}
+{{ 'Wykresy' if pl else 'Charts' }}: {{ e.url }}
 {% endfor %}
-Proof of concept — not medical advice. Change or stop this email under Account: {{ base }}/account
+{{ 'Wersja testowa — to nie jest porada medyczna. Ustawienia maila' if pl else 'Proof of concept — not medical advice. Change or stop this email' }}: {{ base }}/account

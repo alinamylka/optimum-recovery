@@ -43,7 +43,12 @@ def public_url() -> str:
 
 
 def athletes_for(username: str, role: str) -> list:
-    """The coach's own athletes and those shared with them; an athlete's own profile if that is all they have."""
+    """
+    Admins get every athlete; coaches their own and those shared with them;
+    an athlete their own profile.
+    """
+    if role == "admin":
+        return db.all_athletes()
     own = db.own_profile(username)
     seen, result = set(), []
     for a in [*db.athletes(username), *db.shared_with(username), *([own] if own else [])]:
@@ -58,7 +63,9 @@ def last_week(today: datetime) -> tuple[pd.Timestamp, pd.Timestamp]:
     return monday - pd.Timedelta(days=7), monday - pd.Timedelta(days=1)
 
 
-def report(username: str, role: str, today: datetime | None = None) -> tuple[str, str, str] | None:
+def report(
+    username: str, role: str, today: datetime | None = None, language: str = "pl"
+) -> tuple[str, str, str] | None:
     """Subject, HTML and plain text of the report, or None when there is nobody to report on."""
     from .main import _latest, _refresh_if_stale  # the web module holds the shared helpers
 
@@ -80,15 +87,20 @@ def report(username: str, role: str, today: datetime | None = None) -> tuple[str
             per_model.append(
                 {
                     "model": m,
-                    "today": _latest(m, result),
-                    "summary": describe.week(week, before) if not week.empty else "No data last week.",
+                    "today": _latest(m, result, language),
+                    "summary": describe.week(week, before, language) if not week.empty else describe.no_data(language),
                     "counts": week["signal"].value_counts().to_dict() if not week.empty else {},
                 }
             )
         entries.append({"athlete": a, "models": per_model, "url": f"{public_url()}/athletes/{a['id']}"})
 
-    subject = f"Recovery — week of {start:%d.%m} to {end:%d.%m}"
-    context = {"entries": entries, "start": start, "end": end, "username": username, "base": public_url()}
+    pl = language == "pl"
+    subject = (
+        f"Regeneracja — tydzień {start:%d.%m}–{end:%d.%m}" if pl else f"Recovery — week of {start:%d.%m} to {end:%d.%m}"
+    )
+    context = {
+        "entries": entries, "start": start, "end": end, "username": username, "base": public_url(), "pl": pl,
+    }
     html = templates.get_template("mail.html").render(context)
     text = templates.get_template("mail.txt").render(context)
     return subject, html, text
@@ -121,7 +133,7 @@ def send_weekly(now: datetime | None = None) -> list[str]:
     for row in db.logins():
         if not row["email"] or not row["weekly_mail"] or db.mail_sent(row["username"], week):
             continue
-        built = report(row["username"], row["role"], now)
+        built = report(row["username"], row["role"], now, row["language"] or "pl")
         if built is None:
             continue
         try:

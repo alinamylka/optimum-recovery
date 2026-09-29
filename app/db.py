@@ -86,6 +86,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "email" not in login_columns:
         conn.execute("ALTER TABLE login ADD COLUMN email TEXT")
         conn.execute("ALTER TABLE login ADD COLUMN weekly_mail INTEGER NOT NULL DEFAULT 1")
+    if "language" not in {r["name"] for r in conn.execute("PRAGMA table_info(login)")}:
+        conn.execute("ALTER TABLE login ADD COLUMN language TEXT NOT NULL DEFAULT 'pl'")
     # SQLite can't change a CHECK constraint, so the table is rebuilt to allow the athlete role.
     sql = conn.execute("SELECT sql FROM sqlite_master WHERE name = 'login'").fetchone()["sql"]
     if "'athlete'" not in sql:
@@ -116,7 +118,7 @@ def logins() -> list[sqlite3.Row]:
     with connect() as conn:
         return conn.execute(
             """
-            SELECT l.username, l.role, l.created_at, l.email, l.weekly_mail,
+            SELECT l.username, l.role, l.created_at, l.email, l.weekly_mail, l.language,
                    (SELECT COUNT(*) FROM athlete a WHERE a.owner = l.username) AS athletes,
                    (SELECT COUNT(*) FROM share s WHERE s.username = l.username) AS shared,
                    (SELECT a.id FROM athlete a WHERE a.login = l.username) AS profile_id,
@@ -146,6 +148,11 @@ def set_mail(username: str, email: str | None, weekly: bool) -> None:
         conn.execute(
             "UPDATE login SET email = ?, weekly_mail = ? WHERE username = ?", (email or None, int(weekly), username)
         )
+
+
+def set_language(username: str, language: str) -> None:
+    with connect() as conn:
+        conn.execute("UPDATE login SET language = ? WHERE username = ?", (language, username))
 
 
 def mail_sent(username: str, week: str) -> bool:
