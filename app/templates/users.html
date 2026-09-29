@@ -27,6 +27,7 @@
       <td>
         <form method="post" action="/users/{{ u.username }}/email" class="row">
           <input name="email" type="email" value="{{ u.email or '' }}" placeholder="—" style="width:190px">
+          <select name="language">{% for code, name in languages.items() %}<option value="{{ code }}" {{ 'selected' if u.language == code }}>{{ code }}</option>{% endfor %}</select>
           <button class="plain">Save</button>{% if u.email and not u.weekly_mail %}<span class="muted">off</span>{% endif %}
         </form>
       </td>

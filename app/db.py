@@ -25,7 +25,10 @@ CREATE TABLE IF NOT EXISTS athlete (
     intervals_id TEXT,
     api_key TEXT,
     synced_at TEXT,
-    login TEXT UNIQUE
+    login TEXT UNIQUE,
+    email TEXT,
+    language TEXT NOT NULL DEFAULT 'pl',
+    weekly_mail INTEGER NOT NULL DEFAULT 1
 );
 CREATE TABLE IF NOT EXISTS metric (
     athlete_id INTEGER NOT NULL REFERENCES athlete(id) ON DELETE CASCADE,
@@ -82,6 +85,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "login" not in columns:
         conn.execute("ALTER TABLE athlete ADD COLUMN login TEXT")
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS athlete_login ON athlete(login)")
+    athlete_columns = {r["name"] for r in conn.execute("PRAGMA table_info(athlete)")}
+    if "email" not in athlete_columns:
+        conn.execute("ALTER TABLE athlete ADD COLUMN email TEXT")
+        conn.execute("ALTER TABLE athlete ADD COLUMN language TEXT NOT NULL DEFAULT 'pl'")
+        conn.execute("ALTER TABLE athlete ADD COLUMN weekly_mail INTEGER NOT NULL DEFAULT 1")
     login_columns = {r["name"] for r in conn.execute("PRAGMA table_info(login)")}
     if "email" not in login_columns:
         conn.execute("ALTER TABLE login ADD COLUMN email TEXT")
@@ -147,6 +155,14 @@ def set_mail(username: str, email: str | None, weekly: bool) -> None:
     with connect() as conn:
         conn.execute(
             "UPDATE login SET email = ?, weekly_mail = ? WHERE username = ?", (email or None, int(weekly), username)
+        )
+
+
+def set_athlete_mail(athlete_id: int, email: str | None, language: str, weekly: bool) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE athlete SET email = ?, language = ?, weekly_mail = ? WHERE id = ?",
+            (email or None, language, int(weekly), athlete_id),
         )
 
 

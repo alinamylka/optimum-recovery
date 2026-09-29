@@ -69,9 +69,16 @@ def report(
     """Subject, HTML and plain text of the report, or None when there is nobody to report on."""
     from .main import _latest, _refresh_if_stale  # the web module holds the shared helpers
 
+    return report_on(athletes_for(username, role), username, today, language)
+
+
+def report_on(athletes: list, recipient: str, today: datetime | None = None, language: str = "pl"):
+    """The report for a given list of athletes — a coach's roster, or one athlete for themselves."""
+    from .main import _latest, _refresh_if_stale
+
+    username = recipient
     today = today or datetime.now(TIMEZONE)
     start, end = last_week(today)
-    athletes = athletes_for(username, role)
     if not athletes:
         return None
     entries = []
@@ -143,6 +150,21 @@ def send_weekly(now: datetime | None = None) -> list[str]:
             continue
         db.log_mail(row["username"], week)
         sent.append(row["username"])
+    # Athletes without an account get their own report at the address their coach entered.
+    for a in db.all_athletes():
+        key = f"athlete:{a['id']}"
+        if a["login"] or not a["email"] or not a["weekly_mail"] or db.mail_sent(key, week):
+            continue
+        built = report_on([a], a["name"], now, a["language"] or "pl")
+        if built is None:
+            continue
+        try:
+            send(a["email"], *built)
+        except Exception:
+            log.exception("weekly mail to athlete %s failed", a["id"])
+            continue
+        db.log_mail(key, week)
+        sent.append(key)
     return sent
 
 

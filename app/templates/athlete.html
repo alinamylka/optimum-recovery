@@ -127,6 +127,28 @@
 </div>
 {% endif %}
 
+{% if mine %}
+<div class="card">
+  <h3 style="margin-top:0">Monday email for the athlete</h3>
+  {% if athlete.login %}
+  <p class="muted" style="margin-bottom:0">{{ athlete.login }} has an account: they set their email and language themselves under Account.</p>
+  {% else %}
+  <p class="muted">Every Monday the athlete gets their own signal and a written summary of their week.</p>
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/mail">
+    <input name="email" type="email" value="{{ athlete.email or '' }}" placeholder="athlete@example.com" style="min-width:230px">
+    <select name="language">{% for code, name in languages.items() %}<option value="{{ code }}" {{ 'selected' if athlete.language == code }}>{{ name }}</option>{% endfor %}</select>
+    <label><input type="checkbox" name="weekly" value="1" {{ 'checked' if athlete.weekly_mail }}> send</label>
+    <button>Save</button>
+  </form>
+  {% if athlete.email %}
+  <form method="post" action="/athletes/{{ athlete.id }}/mail/preview" target="_blank" style="margin-top:8px">
+    <button class="plain">Preview the athlete's email</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</div>
+{% endif %}
+
 {% if me.admin %}
 <div class="card">
   <h3 style="margin-top:0">Coach</h3>

@@ -135,6 +135,27 @@ def settings(
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
 
 
+@app.post("/athletes/{athlete_id}/mail")
+def athlete_mail(
+    athlete_id: int,
+    me: Login = Depends(auth.current),
+    email: str = Form(""),
+    language: str = Form("pl"),
+    weekly: str = Form(""),
+):
+    """Monday email for an athlete without an account, set up by their coach."""
+    a = _manageable(me, athlete_id, coach_only=True)
+    db.set_athlete_mail(a["id"], email.strip(), language if language in describe.LANGUAGES else "pl", bool(weekly))
+    return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+
+
+@app.post("/athletes/{athlete_id}/mail/preview", response_class=HTMLResponse)
+def athlete_mail_preview(athlete_id: int, me: Login = Depends(auth.current)):
+    a = _manageable(me, athlete_id, coach_only=True)
+    built = mailer.report_on([a], a["name"], language=a["language"] or "pl")
+    return HTMLResponse(built[1] if built else "<p>No data.</p>")
+
+
 @app.post("/athletes/{athlete_id}/account", response_class=HTMLResponse)
 def account(
     request: Request,
@@ -199,6 +220,7 @@ def _athlete_page(
             "share_candidates": [u["username"] for u in logins if u["username"] not in {a["owner"], *shares}],
             "coaches": [u["username"] for u in logins if u["role"] != "athlete"] if me.admin else [],
             "free_logins": [u["username"] for u in logins if u["profile_id"] is None],
+            "languages": describe.LANGUAGES,
         },
         status_code=status,
     )
@@ -291,18 +313,20 @@ def test_mail(request: Request, me: Login = Depends(auth.current)):
 
 
 @app.post("/users/{username}/email")
-def set_user_email(username: str, me: Login = Depends(auth.admin), email: str = Form("")):
+def set_user_email(
+    username: str, me: Login = Depends(auth.admin), email: str = Form(""), language: str = Form("")
+):
     row = db.login(username)
     if row:
         db.set_mail(username, email.strip(), bool(row["weekly_mail"]))
+        if language in describe.LANGUAGES:
+            db.set_language(username, language)
     return RedirectResponse("/users", status_code=303)
 
 
 @app.get("/users", response_class=HTMLResponse)
 def users(request: Request, me: Login = Depends(auth.admin)):
-    return templates.TemplateResponse(
-        request, "users.html", {"me": me, "users": db.logins(), "roles": auth.ROLES, "notice": None}
-    )
+    return _users_page(request, me, None)
 
 
 @app.post("/users", response_class=HTMLResponse)
@@ -356,7 +380,9 @@ async def not_found(request: Request, exc):
 
 def _users_page(request: Request, me: Login, notice: str):
     return templates.TemplateResponse(
-        request, "users.html", {"me": me, "users": db.logins(), "roles": auth.ROLES, "notice": notice}
+        request,
+        "users.html",
+        {"me": me, "users": db.logins(), "roles": auth.ROLES, "notice": notice, "languages": describe.LANGUAGES},
     )
 
 
