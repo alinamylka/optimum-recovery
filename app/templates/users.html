@@ -11,7 +11,7 @@
 
 <div class="card scroll">
   <table>
-    <tr><th>Login</th><th>Role</th><th>Own athletes</th><th>Shared with them</th><th>Since</th><th></th></tr>
+    <tr><th>Login</th><th>Role</th><th>Own profile</th><th>Coaches</th><th>Shared with them</th><th>Since</th><th></th></tr>
     {% for u in users %}
     <tr>
       <td><b>{{ u.username }}</b>{% if u.username == me.username %} <span class="muted">(you)</span>{% endif %}</td>
@@ -24,6 +24,7 @@
         </form>
         {% endif %}
       </td>
+      <td>{% if u.profile_id %}<a href="/athletes/{{ u.profile_id }}">{{ u.profile }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td>{{ u.athletes }}</td>
       <td>{{ u.shared }}</td>
       <td class="muted">{{ u.created_at[:10] }}</td>
@@ -48,12 +49,13 @@
   <h3 style="margin-top:0">Add user</h3>
   <form class="row" method="post" action="/users">
     <input name="username" placeholder="Login" required pattern="[A-Za-z0-9._-]+">
-    <select name="role"><option value="coach">coach</option><option value="admin">admin</option></select>
+    <select name="role"><option value="coach">coach</option><option value="athlete">athlete</option><option value="admin">admin</option></select>
     <input name="password" placeholder="Password (empty = generate)">
     <button>Add</button>
   </form>
   <p class="muted" style="margin-bottom:0">
     <b>admin</b> sees every athlete and manages users. <b>coach</b> sees the athletes they added and those shared with them.
+    <b>athlete</b> sees only their own profile and can set up its data source — link the login to a profile on the athlete's page.
     A login with athletes can't be deleted — delete or hand over the athletes first.
   </p>
 </div>

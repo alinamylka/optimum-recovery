@@ -43,22 +43,40 @@ def healthz():
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, me: Login = Depends(auth.current)):
-    """Admins see every athlete grouped by coach; coaches their own and those shared with them."""
-    athletes = db.all_athletes() if me.admin else [*db.athletes(me.username), *db.shared_with(me.username)]
-    groups: dict[str, list[dict]] = {}
-    for a in athletes:
-        _refresh_if_stale(a)
-        data = db.metrics(a["id"])
-        signals = [(m, _latest(m, m.analyse(data))) for m in models.MODELS.values()]
-        shared_by = a["owner"] if a["owner"] != me.username and not me.admin else None
-        heading = a["owner"] if me.admin else ("Shared with you" if shared_by else "Your athletes")
-        groups.setdefault(heading, []).append({"athlete": a, "signals": signals, "shared_by": shared_by})
-    return templates.TemplateResponse(request, "index.html", {"me": me, "groups": groups})
+    """
+    Everyone sees their own profile first. Admins then see every athlete grouped
+    by coach; coaches their athletes and those shared with them.
+    """
+    own = db.own_profile(me.username)
+    groups: dict[str, list] = {}
+    if own:
+        groups["You"] = [own]
+    if me.admin:
+        for a in db.all_athletes():
+            if not own or a["id"] != own["id"]:
+                groups.setdefault(f"Coach: {a['owner']}", []).append(a)
+    else:
+        coached = [a for a in db.athletes(me.username) if not own or a["id"] != own["id"]]
+        if coached:
+            groups["Your athletes"] = coached
+        shared = db.shared_with(me.username)
+        if shared:
+            groups["Shared with you"] = shared
+    cards = {heading: [_card(me, a) for a in athletes] for heading, athletes in groups.items()}
+    return templates.TemplateResponse(request, "index.html", {"me": me, "groups": cards})
+
+
+def _card(me: Login, a) -> dict:
+    _refresh_if_stale(a)
+    data = db.metrics(a["id"])
+    signals = [(m, _latest(m, m.analyse(data))) for m in models.MODELS.values()]
+    shared_by = a["owner"] if a["owner"] != me.username and a["login"] != me.username and not me.admin else None
+    return {"athlete": a, "signals": signals, "shared_by": shared_by}
 
 
 @app.post("/athletes")
 def create(
-    me: Login = Depends(auth.current),
+    me: Login = Depends(auth.coach),
     name: str = Form(...),
     intervals_id: str = Form(""),
     api_key: str = Form(""),
@@ -88,23 +106,73 @@ def sync(athlete_id: int, me: Login = Depends(auth.current)):
 
 @app.post("/athletes/{athlete_id}/delete")
 def delete(athlete_id: int, me: Login = Depends(auth.current)):
-    a = _manageable(me, athlete_id)
+    a = _manageable(me, athlete_id, coach_only=True)
     db.delete_athlete(a["owner"], a["id"])
     return RedirectResponse("/", status_code=303)
 
 
 @app.get("/athletes/{athlete_id}", response_class=HTMLResponse)
 def dashboard(request: Request, athlete_id: int, model: str | None = None, me: Login = Depends(auth.current)):
-    a = _visible(me, athlete_id)
-    can_manage = me.admin or a["owner"] == me.username
+    return _athlete_page(request, me, _visible(me, athlete_id), model)
+
+
+@app.post("/athletes/{athlete_id}/settings")
+def settings(
+    athlete_id: int,
+    me: Login = Depends(auth.current),
+    name: str = Form(...),
+    intervals_id: str = Form(""),
+    api_key: str = Form(""),
+    remove_key: str = Form(""),
+):
+    """The data source. The athlete may set it up themselves, or their coach does it for them."""
+    a = _manageable(me, athlete_id)
+    keep = not api_key.strip() and not remove_key
+    db.update_athlete(a["id"], name.strip() or a["name"], intervals_id.strip(), api_key.strip(), keep_key=keep)
+    _sync(db.athlete_by_id(a["id"]))
+    return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+
+
+@app.post("/athletes/{athlete_id}/account", response_class=HTMLResponse)
+def account(
+    request: Request,
+    athlete_id: int,
+    me: Login = Depends(auth.current),
+    existing: str = Form(""),
+    new_username: str = Form(""),
+):
+    """Links the profile to a login, or creates one so the athlete can sign in and see their own data."""
+    a = _manageable(me, athlete_id, coach_only=True)
+    notice = None
+    username = new_username.strip().lower()
+    if username:
+        if ":" in username or db.login(username):
+            raise HTTPException(400, f"Login {username} is not available")
+        password = auth.new_password()
+        db.add_login(username, auth.hash_password(password), "athlete")
+        db.link_login(a["id"], username)
+        notice = f"Created login {username} for {a['name']}. Password: {password}"
+    elif existing == "-":
+        db.link_login(a["id"], None)
+    elif existing and db.login(existing):
+        db.link_login(a["id"], existing)
+    if notice is None:
+        return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+    return _athlete_page(request, me, db.athlete_by_id(a["id"]), None, notice)
+
+
+def _athlete_page(request: Request, me: Login, a, model: str | None, notice: str | None = None):
+    is_coach = me.admin or a["owner"] == me.username
+    is_self = a["login"] == me.username
     error = _refresh_if_stale(a)
+    a = db.athlete_by_id(a["id"])
     chosen = models.get(model)
     data = db.metrics(a["id"])
     if not error and a["api_key"] and data["hrv"].dropna().empty:
         error = NO_HRV
     result = chosen.analyse(data)
-    shares = db.shares(a["id"]) if can_manage else []
-    candidates = [u["username"] for u in db.logins() if u["username"] not in {a["owner"], *shares}]
+    shares = db.shares(a["id"]) if is_coach else []
+    logins = db.logins()
     return templates.TemplateResponse(
         request,
         "athlete.html",
@@ -118,10 +186,14 @@ def dashboard(request: Request, athlete_id: int, model: str | None = None, me: L
             "weeks": _weeks(result),
             "params": Params(),
             "error": error,
-            "mine": can_manage,
+            "notice": notice,
+            "mine": is_coach,
+            "configurable": is_coach or is_self,
+            "is_self": is_self,
             "shares": shares,
-            "share_candidates": candidates if can_manage else [],
-            "coaches": [u["username"] for u in db.logins()] if me.admin else [],
+            "share_candidates": [u["username"] for u in logins if u["username"] not in {a["owner"], *shares}],
+            "coaches": [u["username"] for u in logins if u["role"] != "athlete"] if me.admin else [],
+            "free_logins": [u["username"] for u in logins if u["profile_id"] is None],
         },
     )
 
@@ -140,7 +212,7 @@ def analysis(athlete_id: int, model: str | None = None, me: Login = Depends(auth
 
 @app.post("/athletes/{athlete_id}/share")
 def share(athlete_id: int, me: Login = Depends(auth.current), username: str = Form(...)):
-    a = _manageable(me, athlete_id)
+    a = _manageable(me, athlete_id, coach_only=True)
     if db.login(username) and username != a["owner"]:
         db.add_share(a["id"], username)
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
@@ -148,14 +220,15 @@ def share(athlete_id: int, me: Login = Depends(auth.current), username: str = Fo
 
 @app.post("/athletes/{athlete_id}/unshare")
 def unshare(athlete_id: int, me: Login = Depends(auth.current), username: str = Form(...)):
-    db.remove_share(_manageable(me, athlete_id)["id"], username)
+    db.remove_share(_manageable(me, athlete_id, coach_only=True)["id"], username)
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
 
 
 @app.post("/athletes/{athlete_id}/owner")
 def change_owner(athlete_id: int, me: Login = Depends(auth.admin), owner: str = Form(...)):
     a = _manageable(me, athlete_id)
-    if db.login(owner):
+    row = db.login(owner)
+    if row and row["role"] != "athlete":
         db.set_owner(a["id"], owner)
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
 
@@ -230,10 +303,16 @@ def _visible(me: Login, athlete_id: int):
     return a
 
 
-def _manageable(me: Login, athlete_id: int):
-    """Only the owner, or an admin, may change an athlete."""
-    a = db.athlete_by_id(athlete_id) if me.admin else db.athlete(me.username, athlete_id)
-    if a is None:
+def _manageable(me: Login, athlete_id: int, coach_only: bool = False):
+    """
+    The coach (owner) and admins may change everything. The athlete may look
+    after their own data source, but not delete, share or move themselves.
+    """
+    a = db.athlete_by_id(athlete_id)
+    allowed = a is not None and (
+        me.admin or a["owner"] == me.username or (not coach_only and a["login"] == me.username)
+    )
+    if not allowed:
         raise HTTPException(404)
     return a
 

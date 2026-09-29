@@ -13,7 +13,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from . import db
 
-ROLES = ("admin", "coach")
+ROLES = ("admin", "coach", "athlete")
 ITERATIONS = 200_000
 security = HTTPBasic()
 
@@ -22,6 +22,7 @@ security = HTTPBasic()
 class Login:
     username: str
     role: str
+    profile_id: int | None = None  # the athlete profile that is this person, if any
 
     @property
     def admin(self) -> bool:
@@ -51,7 +52,15 @@ def current(credentials: HTTPBasicCredentials = Depends(security)) -> Login:
     row = db.login(credentials.username)
     if row is None or not _matches(row["password_hash"], credentials.password):
         raise HTTPException(401, headers={"WWW-Authenticate": "Basic"})
-    return Login(row["username"], row["role"])
+    profile = db.own_profile(row["username"])
+    return Login(row["username"], row["role"], profile["id"] if profile else None)
+
+
+def coach(me: Login = Depends(current)) -> Login:
+    """Admins and coaches; athletes only look after their own profile."""
+    if me.role == "athlete":
+        raise HTTPException(404)
+    return me
 
 
 def admin(me: Login = Depends(current)) -> Login:

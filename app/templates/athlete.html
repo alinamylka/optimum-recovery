@@ -2,8 +2,13 @@
 {% block title %}{{ athlete.name }} · Optimum Recovery{% endblock %}
 {% block body %}
 <h2 style="margin-top:0">{{ athlete.name }}</h2>
-{% if not mine %}<p class="muted">Shared with you by {{ athlete.owner }} — view only.</p>
+{% if is_self and athlete.owner != me.username %}<p class="muted">Your profile · coach: {{ athlete.owner }}</p>
+{% elif not mine %}<p class="muted">Shared with you by {{ athlete.owner }} — view only.</p>
 {% elif athlete.owner != me.username %}<p class="muted">Coach: {{ athlete.owner }} (you see it as admin)</p>{% endif %}
+{% if notice %}
+<div class="card" style="border-color:var(--green)"><b>{{ notice }}</b>
+  <div class="muted">Copy it now — it can't be shown again. Send it to the athlete yourself.</div></div>
+{% endif %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 
 <nav class="tabs">
@@ -53,7 +58,23 @@
 <div class="card muted">No data yet — sync from intervals.icu or upload a TrainingPeaks export below.</div>
 {% endif %}
 
-{% if mine %}
+{% if configurable %}
+<div class="card">
+  <h3 style="margin-top:0">Data source</h3>
+  <form method="post" action="/athletes/{{ athlete.id }}/settings" class="row">
+    <input name="name" value="{{ athlete.name }}" placeholder="Name" required>
+    <input name="intervals_id" value="{{ athlete.intervals_id or '' }}" placeholder="intervals.icu athlete id">
+    <input name="api_key" type="password" placeholder="{{ 'API key saved — type to replace' if athlete.api_key else 'intervals.icu API key' }}">
+    {% if athlete.api_key %}<label class="muted"><input type="checkbox" name="remove_key" value="1"> remove key</label>{% endif %}
+    <button>Save</button>
+  </form>
+  <p class="muted" style="margin-bottom:0">
+    intervals.icu: Settings → Developer Settings → API key. The athlete id looks like <code>i123456</code>;
+    leave it empty when the key is the athlete's own. A coach's key works for athletes who share their intervals.icu account with that coach.
+    Use one device per athlete — mixing Oura, Garmin and WHOOP breaks the HRV baseline.
+  </p>
+</div>
+
 <div class="card">
   <h3 style="margin-top:0">Data</h3>
   {% if athlete.api_key %}
@@ -68,10 +89,36 @@
     <button>Upload TrainingPeaks export</button>
   </form>
   <p class="muted">TrainingPeaks: Athlete Account Settings → Account → Export Data → Custom Metrics. Upload the zip as it is.</p>
+  {% if mine %}
   <form method="post" action="/athletes/{{ athlete.id }}/delete" onsubmit="return confirm('Delete {{ athlete.name }} and all data?')">
     <button class="plain">Delete athlete</button>
   </form>
+  {% endif %}
 </div>
+
+{% if mine %}
+<div class="card">
+  <h3 style="margin-top:0">Athlete's account</h3>
+  {% if athlete.login %}
+  <p>Signs in as <b>{{ athlete.login }}</b> and can see this page and set up their own data source.</p>
+  <form method="post" action="/athletes/{{ athlete.id }}/account" class="row">
+    <input type="hidden" name="existing" value="-"><button class="plain">Unlink account</button>
+  </form>
+  {% else %}
+  <p class="muted">No account — you manage this athlete's data. Give them a login if they should see it themselves.</p>
+  <form method="post" action="/athletes/{{ athlete.id }}/account" class="row">
+    <input name="new_username" placeholder="New login (password is generated)" pattern="[A-Za-z0-9._-]+">
+    <button>Create login</button>
+  </form>
+  {% if free_logins %}
+  <form method="post" action="/athletes/{{ athlete.id }}/account" class="row" style="margin-top:8px">
+    <select name="existing">{% for u in free_logins %}<option>{{ u }}</option>{% endfor %}</select>
+    <button class="plain">Link existing login</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</div>
+{% endif %}
 
 {% if me.admin %}
 <div class="card">
@@ -84,6 +131,7 @@
 </div>
 {% endif %}
 
+{% if mine %}
 <div class="card">
   <h3 style="margin-top:0">Sharing</h3>
   <p class="muted">People you share with can see the charts, but can't change data, see the API key or delete the athlete.</p>
@@ -99,6 +147,7 @@
   </form>
   {% elif not shares %}<p class="muted">No other logins yet.</p>{% endif %}
 </div>
+{% endif %}
 {% endif %}
 
 <details class="card">

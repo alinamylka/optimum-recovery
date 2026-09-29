@@ -1,4 +1,10 @@
-"""SQLite storage: athletes, who owns them, and their daily numbers."""
+"""
+SQLite storage: logins, athletes and their daily numbers.
+
+An athlete has a coach (`owner`, the login that manages them) and optionally
+an account of their own (`login`). Athletes without an account are managed
+entirely by their coach.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +24,8 @@ CREATE TABLE IF NOT EXISTS athlete (
     name TEXT NOT NULL,
     intervals_id TEXT,
     api_key TEXT,
-    synced_at TEXT
+    synced_at TEXT,
+    login TEXT UNIQUE
 );
 CREATE TABLE IF NOT EXISTS metric (
     athlete_id INTEGER NOT NULL REFERENCES athlete(id) ON DELETE CASCADE,
@@ -31,7 +38,7 @@ CREATE TABLE IF NOT EXISTS metric (
 CREATE TABLE IF NOT EXISTS login (
     username TEXT PRIMARY KEY,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('admin', 'coach')),
+    role TEXT NOT NULL CHECK (role IN ('admin', 'coach', 'athlete')),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS share (
@@ -58,6 +65,31 @@ def connect():
 def init() -> None:
     with connect() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Brings a database created by an earlier version up to the current schema."""
+    columns = {r["name"] for r in conn.execute("PRAGMA table_info(athlete)")}
+    if "login" not in columns:
+        conn.execute("ALTER TABLE athlete ADD COLUMN login TEXT")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS athlete_login ON athlete(login)")
+    # SQLite can't change a CHECK constraint, so the table is rebuilt to allow the athlete role.
+    sql = conn.execute("SELECT sql FROM sqlite_master WHERE name = 'login'").fetchone()["sql"]
+    if "'athlete'" not in sql:
+        conn.executescript(
+            """
+            ALTER TABLE login RENAME TO login_old;
+            CREATE TABLE login (
+                username TEXT PRIMARY KEY,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL CHECK (role IN ('admin', 'coach', 'athlete')),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT INTO login SELECT * FROM login_old;
+            DROP TABLE login_old;
+            """
+        )
 
 
 def login(username: str) -> sqlite3.Row | None:
@@ -71,7 +103,9 @@ def logins() -> list[sqlite3.Row]:
             """
             SELECT l.username, l.role, l.created_at,
                    (SELECT COUNT(*) FROM athlete a WHERE a.owner = l.username) AS athletes,
-                   (SELECT COUNT(*) FROM share s WHERE s.username = l.username) AS shared
+                   (SELECT COUNT(*) FROM share s WHERE s.username = l.username) AS shared,
+                   (SELECT a.id FROM athlete a WHERE a.login = l.username) AS profile_id,
+                   (SELECT a.name FROM athlete a WHERE a.login = l.username) AS profile
             FROM login l ORDER BY l.role, l.username
             """
         ).fetchall()
@@ -95,6 +129,7 @@ def update_login(username: str, password_hash: str | None = None, role: str | No
 def delete_login(username: str) -> None:
     with connect() as conn:
         conn.execute("DELETE FROM share WHERE username = ?", (username,))
+        conn.execute("UPDATE athlete SET login = NULL WHERE login = ?", (username,))
         conn.execute("DELETE FROM login WHERE username = ?", (username,))
 
 
@@ -120,6 +155,34 @@ def athlete(owner: str, athlete_id: int) -> sqlite3.Row | None:
         ).fetchone()
 
 
+def own_profile(username: str) -> sqlite3.Row | None:
+    """The athlete profile that belongs to this login, if any."""
+    with connect() as conn:
+        return conn.execute("SELECT * FROM athlete WHERE login = ?", (username,)).fetchone()
+
+
+def update_athlete(athlete_id: int, name: str, intervals_id: str | None, api_key: str | None, keep_key: bool) -> None:
+    """A changed data source syncs again from scratch, so synced_at is cleared."""
+    with connect() as conn:
+        if keep_key:
+            conn.execute(
+                "UPDATE athlete SET name = ?, intervals_id = ?, synced_at = NULL WHERE id = ?",
+                (name, intervals_id or None, athlete_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE athlete SET name = ?, intervals_id = ?, api_key = ?, synced_at = NULL WHERE id = ?",
+                (name, intervals_id or None, api_key or None, athlete_id),
+            )
+
+
+def link_login(athlete_id: int, username: str | None) -> None:
+    with connect() as conn:
+        if username:
+            conn.execute("UPDATE athlete SET login = NULL WHERE login = ?", (username,))
+        conn.execute("UPDATE athlete SET login = ? WHERE id = ?", (username or None, athlete_id))
+
+
 def shared_with(username: str) -> list[sqlite3.Row]:
     with connect() as conn:
         return conn.execute(
@@ -134,10 +197,10 @@ def visible_athlete(username: str, athlete_id: int) -> sqlite3.Row | None:
         return conn.execute(
             """
             SELECT a.* FROM athlete a
-            WHERE a.id = ? AND (a.owner = ? OR EXISTS (
+            WHERE a.id = ? AND (a.owner = ? OR a.login = ? OR EXISTS (
                 SELECT 1 FROM share s WHERE s.athlete_id = a.id AND s.username = ?))
             """,
-            (athlete_id, username, username),
+            (athlete_id, username, username, username),
         ).fetchone()
 
 

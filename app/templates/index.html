@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block body %}
 {% for heading, cards in groups.items() %}
-<h3>{{ heading }}{% if me.admin %} <span class="muted" style="font-weight:400">· coach</span>{% endif %}</h3>
+<h3>{{ heading }}</h3>
 <div class="grid">
 {% for c in cards %}
   <a class="card" href="/athletes/{{ c.athlete.id }}" style="text-decoration:none;color:inherit">
@@ -21,6 +21,7 @@
 <p class="muted">No athletes yet — add the first one below.</p>
 {% endfor %}
 
+{% if me.role != 'athlete' %}
 <div class="card">
   <h3 style="margin-top:0">Add athlete</h3>
   <form class="row" method="post" action="/athletes">
@@ -31,7 +32,9 @@
   </form>
   <p class="muted" style="margin-bottom:0">
     With an intervals.icu key the data syncs by itself (Settings → Developer Settings; athlete id like <code>i123456</code>, empty = the key's own account).
-    Without it, upload a TrainingPeaks export on the athlete page.
+    Without it, upload a TrainingPeaks export on the athlete page. The athlete doesn't need an account;
+    you can create one for them later on their page.
   </p>
 </div>
+{% endif %}
 {% endblock %}
