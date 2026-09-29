@@ -33,23 +33,26 @@
 
 <div class="card scroll">
   <h3 style="margin-top:0">Weeks</h3>
-  <table>
+  <p class="muted" style="margin-top:0">Click a week for a written summary.</p>
+  <table class="weeks">
     {% if model.key == 'debt' %}
     <tr><th>Week of</th><th>Avg readiness</th><th>Debt end</th><th>Debt max</th><th>Days</th><th>Full recovery</th></tr>
     {% for w in weeks %}
-    <tr>
+    <tr class="week" onclick="this.nextElementSibling.hidden = !this.nextElementSibling.hidden">
       <td>{{ w.start }}</td><td>{{ w.readiness }}</td><td>{{ w.debt_end }}</td><td>{{ w.debt_max }}</td>
       <td><span class="dot green"></span>{{ w.green }} <span class="dot amber"></span>{{ w.amber }} <span class="dot red"></span>{{ w.red }}</td>
       <td>{{ "✓" if w.recovered else "" }}</td>
     </tr>
+    <tr class="summary" hidden><td colspan="6">{{ w.description }}</td></tr>
     {% endfor %}
     {% else %}
     <tr><th>Week of</th><th>HRV 7-day at week end</th><th>Avg CV</th><th>Days hard OK</th><th>Days easy/rest</th></tr>
     {% for w in weeks %}
-    <tr>
+    <tr class="week" onclick="this.nextElementSibling.hidden = !this.nextElementSibling.hidden">
       <td>{{ w.start }}</td><td>{{ w.hrv_week }} ms</td><td>{{ w.cv }} %</td>
       <td><span class="dot green"></span>{{ w.green }}</td><td><span class="dot amber"></span>{{ w.amber }}</td>
     </tr>
+    <tr class="summary" hidden><td colspan="5">{{ w.description }}</td></tr>
     {% endfor %}
     {% endif %}
   </table>

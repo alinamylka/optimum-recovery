@@ -12,7 +12,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Upload
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import auth, db, models
+from . import auth, db, describe, models
 from .auth import Login
 from .model import Params, params_dict
 from .sources import fetch_intervals, parse_export
@@ -395,12 +395,14 @@ def _weeks(result: pd.DataFrame) -> list[dict]:
         return []
     known = result[result["signal"].notna()]
     rows = []
+    previous = None
     for start, week in known.groupby(pd.Grouper(freq="W-MON", label="left", closed="left")):
         if week.empty:
             continue
         counts = week["signal"].value_counts()
         row = {
             "start": start.date().isoformat(),
+            "description": describe.week(week, previous),
             "green": int(counts.get("green", 0)),
             "amber": int(counts.get("amber", 0)),
             "red": int(counts.get("red", 0)),
@@ -415,4 +417,5 @@ def _weeks(result: pd.DataFrame) -> list[dict]:
         else:
             row |= {"hrv_week": round(week["hrv_week"].iloc[-1]), "cv": round(week["cv"].mean(), 1)}
         rows.append(row)
+        previous = week
     return rows[::-1]
