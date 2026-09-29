@@ -48,8 +48,16 @@ def parse_trainingpeaks(data: bytes) -> pd.DataFrame:
     """
     if zipfile.is_zipfile(io.BytesIO(data)):
         with zipfile.ZipFile(io.BytesIO(data)) as z:
-            name = next(n for n in z.namelist() if n.lower().endswith(".csv"))
-            data = z.read(name)
+            names = z.namelist()
+            csvs = [n for n in names if n.lower().endswith(".csv")]
+            if not csvs:
+                if any(".fit" in n.lower() for n in names):
+                    raise ValueError(
+                        f"this is a Workout Files export ({len(names)} .FIT workouts). Recovery needs the "
+                        "morning HRV and resting HR: in TrainingPeaks export Custom Metrics instead."
+                    )
+                raise ValueError(f"the zip has no CSV file (it contains {', '.join(names[:3])}...)")
+            data = z.read(csvs[0])
     text = data.decode("utf-8-sig")
     picked: dict[tuple[str, str], tuple[bool, str, float]] = {}
     for row in csv.DictReader(io.StringIO(text)):
@@ -66,6 +74,8 @@ def parse_trainingpeaks(data: bytes) -> pd.DataFrame:
         candidate = (midnight, time, value)
         if key not in picked or candidate[:2] < picked[key][:2]:
             picked[key] = candidate
+    if not picked:
+        raise ValueError("no HRV, Pulse or Stress Level rows found — is this the Custom Metrics export?")
     rows: dict[str, dict] = {}
     for (day, column), (_, _, value) in picked.items():
         rows.setdefault(day, {"date": day})[column] = value

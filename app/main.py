@@ -88,12 +88,13 @@ def create(
 
 
 @app.post("/athletes/{athlete_id}/upload")
-async def upload(athlete_id: int, me: Login = Depends(auth.current), file: UploadFile = File(...)):
+async def upload(request: Request, athlete_id: int, me: Login = Depends(auth.current), file: UploadFile = File(...)):
     a = _manageable(me, athlete_id)
     try:
         frame = parse_trainingpeaks(await file.read())
-    except Exception as e:  # a wrong file should say so, not return a 500
-        raise HTTPException(400, f"Could not read this file as a TrainingPeaks metrics export: {e}")
+    except Exception as e:  # a wrong file should say what is wrong with it, on the page
+        problem = f"{file.filename} could not be imported: {e or type(e).__name__}"
+        return _athlete_page(request, me, a, None, error=problem, status=400)
     db.save_metrics(a["id"], frame)
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
 
@@ -161,10 +162,13 @@ def account(
     return _athlete_page(request, me, db.athlete_by_id(a["id"]), None, notice)
 
 
-def _athlete_page(request: Request, me: Login, a, model: str | None, notice: str | None = None):
+def _athlete_page(
+    request: Request, me: Login, a, model: str | None, notice: str | None = None, error: str | None = None,
+    status: int = 200,
+):
     is_coach = me.admin or a["owner"] == me.username
     is_self = a["login"] == me.username
-    error = _refresh_if_stale(a)
+    error = error or _refresh_if_stale(a)
     a = db.athlete_by_id(a["id"])
     chosen = models.get(model)
     data = db.metrics(a["id"])
@@ -195,6 +199,7 @@ def _athlete_page(request: Request, me: Login, a, model: str | None, notice: str
             "coaches": [u["username"] for u in logins if u["role"] != "athlete"] if me.admin else [],
             "free_logins": [u["username"] for u in logins if u["profile_id"] is None],
         },
+        status_code=status,
     )
 
 
