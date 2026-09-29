@@ -102,7 +102,13 @@ def send(to: str, subject: str, html: str, text: str) -> None:
     message.set_content(text)
     message.add_alternative(html, subtype="html")
     host, port = os.environ["SMTP_HOST"], int(os.environ.get("SMTP_PORT", "465"))
-    with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:
+    # 465 is TLS from the first byte (Gmail); 587 starts plain and upgrades (Oracle Email Delivery).
+    if port == 465:
+        smtp = smtplib.SMTP_SSL(host, port, timeout=30)
+    else:
+        smtp = smtplib.SMTP(host, port, timeout=30)
+        smtp.starttls()
+    with smtp:
         smtp.login(os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"])
         smtp.send_message(message)
 
