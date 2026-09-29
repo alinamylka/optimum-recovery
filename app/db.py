@@ -166,6 +166,13 @@ def add_athlete(owner: str, name: str, intervals_id: str | None, api_key: str | 
         return cur.lastrowid
 
 
+def set_owner(athlete_id: int, owner: str) -> None:
+    with connect() as conn:
+        conn.execute("UPDATE athlete SET owner = ? WHERE id = ?", (owner, athlete_id))
+        # The new owner sees it anyway; a share with them would just be a duplicate.
+        conn.execute("DELETE FROM share WHERE athlete_id = ? AND username = ?", (athlete_id, owner))
+
+
 def delete_athlete(owner: str, athlete_id: int) -> None:
     with connect() as conn:
         conn.execute("DELETE FROM athlete WHERE id = ? AND owner = ?", (athlete_id, owner))

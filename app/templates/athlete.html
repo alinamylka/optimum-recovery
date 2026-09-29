@@ -73,6 +73,17 @@
   </form>
 </div>
 
+{% if me.admin %}
+<div class="card">
+  <h3 style="margin-top:0">Coach</h3>
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/owner">
+    <select name="owner">{% for u in coaches %}<option {{ 'selected' if u == athlete.owner }}>{{ u }}</option>{% endfor %}</select>
+    <button>Move to this coach</button>
+  </form>
+  <p class="muted" style="margin-bottom:0">The athlete, all data and the intervals.icu connection move to that login.</p>
+</div>
+{% endif %}
+
 <div class="card">
   <h3 style="margin-top:0">Sharing</h3>
   <p class="muted">People you share with can see the charts, but can't change data, see the API key or delete the athlete.</p>

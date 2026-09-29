@@ -121,6 +121,7 @@ def dashboard(request: Request, athlete_id: int, model: str | None = None, me: L
             "mine": can_manage,
             "shares": shares,
             "share_candidates": candidates if can_manage else [],
+            "coaches": [u["username"] for u in db.logins()] if me.admin else [],
         },
     )
 
@@ -148,6 +149,14 @@ def share(athlete_id: int, me: Login = Depends(auth.current), username: str = Fo
 @app.post("/athletes/{athlete_id}/unshare")
 def unshare(athlete_id: int, me: Login = Depends(auth.current), username: str = Form(...)):
     db.remove_share(_manageable(me, athlete_id)["id"], username)
+    return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+
+
+@app.post("/athletes/{athlete_id}/owner")
+def change_owner(athlete_id: int, me: Login = Depends(auth.admin), owner: str = Form(...)):
+    a = _manageable(me, athlete_id)
+    if db.login(owner):
+        db.set_owner(a["id"], owner)
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
 
 
