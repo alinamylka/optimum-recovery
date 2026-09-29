@@ -23,6 +23,12 @@ templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 # intervals.icu athletes are refreshed on view when their data is older than this.
 STALE_AFTER = timedelta(hours=6)
 
+NO_HRV = (
+    "intervals.icu answers, but has no HRV for this athlete in the last 400 days. "
+    "In intervals.icu → Settings → Connections, check that Garmin/Oura sync wellness data "
+    "(HRV and resting HR), or upload a TrainingPeaks export below."
+)
+
 
 @app.on_event("startup")
 def startup() -> None:
@@ -93,7 +99,10 @@ def dashboard(request: Request, athlete_id: int, model: str | None = None, me: L
     can_manage = me.admin or a["owner"] == me.username
     error = _refresh_if_stale(a)
     chosen = models.get(model)
-    result = chosen.analyse(db.metrics(a["id"]))
+    data = db.metrics(a["id"])
+    if not error and a["api_key"] and data["hrv"].dropna().empty:
+        error = NO_HRV
+    result = chosen.analyse(data)
     shares = db.shares(a["id"]) if can_manage else []
     candidates = [u["username"] for u in db.logins() if u["username"] not in {a["owner"], *shares}]
     return templates.TemplateResponse(
@@ -224,9 +233,14 @@ def _sync(a) -> str | None:
     if not a["api_key"]:
         return None
     try:
-        db.save_metrics(a["id"], fetch_intervals(a["intervals_id"] or "0", a["api_key"]), synced=True)
+        frame = fetch_intervals(a["intervals_id"] or "0", a["api_key"])
     except httpx.HTTPError as e:
         return f"intervals.icu sync failed: {e}"
+    db.save_metrics(a["id"], frame, synced=True)
+    if frame["hrv"].dropna().empty:
+        # A connection that works but brings no HRV looks exactly like an empty
+        # athlete; say which it is, since the fix is in intervals.icu, not here.
+        return NO_HRV
     return None
 
 
