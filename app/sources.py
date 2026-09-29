@@ -1,4 +1,4 @@
-"""Where the daily numbers come from: intervals.icu, or a TrainingPeaks metrics export."""
+"""Where the daily numbers come from: intervals.icu, a TrainingPeaks metrics export, or an Oura export."""
 
 from __future__ import annotations
 
@@ -33,6 +33,40 @@ def fetch_intervals(athlete_id: str, api_key: str, days: int = 400) -> pd.DataFr
         for r in response.json()
     ]
     return _frame(rows)
+
+
+def parse_export(data: bytes) -> pd.DataFrame:
+    """Recognises the file by its content: a TrainingPeaks metrics export or an Oura trends export."""
+    if zipfile.is_zipfile(io.BytesIO(data)):
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            oura = [n for n in z.namelist() if n.lower().endswith(".csv") and "trends" in n.lower()]
+            if oura:
+                return parse_oura(z.read(oura[0]))
+        return parse_trainingpeaks(data)
+    header = data[:2000].decode("utf-8-sig", errors="replace").splitlines()[0] if data else ""
+    if "Average HRV" in header:
+        return parse_oura(data)
+    return parse_trainingpeaks(data)
+
+
+def parse_oura(data: bytes) -> pd.DataFrame:
+    """
+    Oura: the trends CSV from the account's data export, one row per night.
+    HRV is Oura's night average (RMSSD); resting HR is the night's lowest,
+    which is what Oura itself calls resting heart rate.
+    """
+    frame = pd.read_csv(io.BytesIO(data))
+    missing = {"date", "Average HRV", "Lowest Resting Heart Rate"} - set(frame.columns)
+    if missing:
+        raise ValueError(f"this Oura file has no {', '.join(sorted(missing))} column")
+    rows = [
+        {"date": r["date"], "hrv": r["Average HRV"], "rhr": r["Lowest Resting Heart Rate"], "stress": None}
+        for _, r in frame.iterrows()
+    ]
+    result = _frame(rows)
+    if result.empty:
+        raise ValueError("the Oura file has no nights with HRV or resting HR")
+    return result
 
 
 def parse_trainingpeaks(data: bytes) -> pd.DataFrame:

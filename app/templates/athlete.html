@@ -86,9 +86,13 @@
   {% endif %}
   <form class="row" method="post" action="/athletes/{{ athlete.id }}/upload" enctype="multipart/form-data">
     <input type="file" name="file" accept=".zip,.csv" required>
-    <button>Upload TrainingPeaks export</button>
+    <button>Upload export</button>
   </form>
-  <p class="muted">TrainingPeaks: Athlete Account Settings → Account → Export Data → Custom Metrics. Upload the zip as it is.</p>
+  <p class="muted">
+    <b>TrainingPeaks</b>: Athlete Account Settings → Account → Export Data → <b>Custom Metrics</b> (not Workout Files). Upload the zip as it is.<br>
+    <b>Oura</b>: data export from the Oura account — upload the <code>…_trends.csv</code> (or the zip it came in).
+    Uploading again adds new days and updates existing ones.
+  </p>
   {% if mine %}
   <form method="post" action="/athletes/{{ athlete.id }}/delete" onsubmit="return confirm('Delete {{ athlete.name }} and all data?')">
     <button class="plain">Delete athlete</button>

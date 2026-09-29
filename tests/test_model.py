@@ -72,3 +72,18 @@ def test_password_hash_roundtrip():
     stored = auth.hash_password("s3cret")
     assert auth._matches(stored, "s3cret")
     assert not auth._matches(stored, "wrong")
+
+
+def test_oura_trends_export():
+    from app.sources import parse_export
+
+    csv = (
+        "date,Sleep Score,Average HRV,Lowest Resting Heart Rate,Average Resting Heart Rate\n"
+        "2026-01-01,80,78,42,47.1\n"
+        "2026-01-02,82,,,\n"
+        "2026-01-03,85,90,40,45.0\n"
+    ).encode()
+    frame = parse_export(csv)
+    assert list(frame.index.strftime("%Y-%m-%d")) == ["2026-01-01", "2026-01-03"]
+    assert frame.loc["2026-01-03", "hrv"] == 90
+    assert frame.loc["2026-01-03", "rhr"] == 40

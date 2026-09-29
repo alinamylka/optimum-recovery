@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from . import auth, db, models
 from .auth import Login
 from .model import Params, params_dict
-from .sources import fetch_intervals, parse_trainingpeaks
+from .sources import fetch_intervals, parse_export
 
 app = FastAPI(title="Optimum Recovery")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -91,7 +91,7 @@ def create(
 async def upload(request: Request, athlete_id: int, me: Login = Depends(auth.current), file: UploadFile = File(...)):
     a = _manageable(me, athlete_id)
     try:
-        frame = parse_trainingpeaks(await file.read())
+        frame = parse_export(await file.read())
     except Exception as e:  # a wrong file should say what is wrong with it, on the page
         problem = f"{file.filename} could not be imported: {e or type(e).__name__}"
         return _athlete_page(request, me, a, None, error=problem, status=400)
