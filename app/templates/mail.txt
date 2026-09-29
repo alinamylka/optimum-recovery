@@ -1,0 +1,11 @@
+Optimum Recovery — week {{ start.strftime('%d.%m') }}–{{ end.strftime('%d.%m.%Y') }}
+{% for e in entries %}
+== {{ e.athlete.name }} ==
+{% for m in e.models %}
+{{ m.model.name }}
+{% if m.today %}Latest ({{ m.today.date }}): {{ m.today.state }} — {{ m.today.advice }}{% else %}No data.{% endif %}
+Last week: {{ m.summary }}
+{% endfor %}
+Charts: {{ e.url }}
+{% endfor %}
+Proof of concept — not medical advice. Change or stop this email under Account: {{ base }}/account

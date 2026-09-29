@@ -11,7 +11,7 @@
 
 <div class="card scroll">
   <table>
-    <tr><th>Login</th><th>Role</th><th>Own profile</th><th>Coaches</th><th>Shared with them</th><th>Since</th><th></th></tr>
+    <tr><th>Login</th><th>Role</th><th>Email (Monday report)</th><th>Own profile</th><th>Coaches</th><th>Shared with them</th><th>Since</th><th></th></tr>
     {% for u in users %}
     <tr>
       <td><b>{{ u.username }}</b>{% if u.username == me.username %} <span class="muted">(you)</span>{% endif %}</td>
@@ -23,6 +23,12 @@
           </select>
         </form>
         {% endif %}
+      </td>
+      <td>
+        <form method="post" action="/users/{{ u.username }}/email" class="row">
+          <input name="email" type="email" value="{{ u.email or '' }}" placeholder="—" style="width:190px">
+          <button class="plain">Save</button>{% if u.email and not u.weekly_mail %}<span class="muted">off</span>{% endif %}
+        </form>
       </td>
       <td>{% if u.profile_id %}<a href="/athletes/{{ u.profile_id }}">{{ u.profile }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td>{{ u.athletes }}</td>

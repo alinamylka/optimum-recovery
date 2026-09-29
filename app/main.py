@@ -12,7 +12,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Upload
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import auth, db, describe, models
+from . import auth, db, describe, mailer, models
 from .auth import Login
 from .model import Params, params_dict
 from .sources import fetch_intervals, parse_export
@@ -34,6 +34,7 @@ NO_HRV = (
 def startup() -> None:
     db.init()
     auth.seed_from_env()
+    mailer.start()
 
 
 @app.get("/healthz")
@@ -236,6 +237,50 @@ def change_owner(athlete_id: int, me: Login = Depends(auth.admin), owner: str = 
     if row and row["role"] != "athlete":
         db.set_owner(a["id"], owner)
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+
+
+@app.get("/account", response_class=HTMLResponse)
+def account_page(request: Request, me: Login = Depends(auth.current), notice: str | None = None, error: str | None = None):
+    return templates.TemplateResponse(
+        request,
+        "account.html",
+        {"me": me, "row": db.login(me.username), "configured": mailer.configured(), "notice": notice, "error": error},
+    )
+
+
+@app.post("/account", response_class=HTMLResponse)
+def save_account(request: Request, me: Login = Depends(auth.current), email: str = Form(""), weekly: str = Form("")):
+    db.set_mail(me.username, email.strip(), bool(weekly))
+    return account_page(request, me, notice="Saved.")
+
+
+@app.get("/account/preview", response_class=HTMLResponse)
+def preview_mail(me: Login = Depends(auth.current)):
+    built = mailer.report(me.username, me.role)
+    if built is None:
+        return HTMLResponse("<p>No athletes to report on yet.</p>")
+    return HTMLResponse(built[1])
+
+
+@app.post("/account/test", response_class=HTMLResponse)
+def test_mail(request: Request, me: Login = Depends(auth.current)):
+    row = db.login(me.username)
+    built = mailer.report(me.username, me.role)
+    if not row["email"] or built is None or not mailer.configured():
+        return account_page(request, me, error="Nothing to send: add an email address and athletes first.")
+    try:
+        mailer.send(row["email"], *built)
+    except Exception as e:
+        return account_page(request, me, error=f"Sending failed: {e}")
+    return account_page(request, me, notice=f"Sent to {row['email']}.")
+
+
+@app.post("/users/{username}/email")
+def set_user_email(username: str, me: Login = Depends(auth.admin), email: str = Form("")):
+    row = db.login(username)
+    if row:
+        db.set_mail(username, email.strip(), bool(row["weekly_mail"]))
+    return RedirectResponse("/users", status_code=303)
 
 
 @app.get("/users", response_class=HTMLResponse)

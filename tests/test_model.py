@@ -87,3 +87,12 @@ def test_oura_trends_export():
     assert list(frame.index.strftime("%Y-%m-%d")) == ["2026-01-01", "2026-01-03"]
     assert frame.loc["2026-01-03", "hrv"] == 90
     assert frame.loc["2026-01-03", "rhr"] == 40
+
+
+def test_last_week_is_the_monday_to_sunday_before():
+    from datetime import datetime
+
+    from app.mailer import last_week
+
+    start, end = last_week(datetime(2026, 9, 28, 6, 0))  # a Monday
+    assert (start.date().isoformat(), end.date().isoformat()) == ("2026-09-21", "2026-09-27")

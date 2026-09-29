@@ -51,7 +51,7 @@
     {% if me.profile_id %}<a href="/athletes/{{ me.profile_id }}" style="font-weight:400">My data</a>{% endif %}
     {% if me.role != 'athlete' %}<a href="/" style="font-weight:400">Athletes</a>{% endif %}
     {% if me.admin %}<a href="/users" style="font-weight:400">Users</a>{% endif %}
-    <span class="muted">{{ me.username }} · {{ me.role }}</span>
+    <a href="/account" class="muted" style="font-weight:400">{{ me.username }} · {{ me.role }}</a>
     {% endif %}
   </nav>
 </header>

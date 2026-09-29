@@ -39,7 +39,15 @@ CREATE TABLE IF NOT EXISTS login (
     username TEXT PRIMARY KEY,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('admin', 'coach', 'athlete')),
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    email TEXT,
+    weekly_mail INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS mail_log (
+    username TEXT NOT NULL,
+    week TEXT NOT NULL,
+    sent_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (username, week)
 );
 CREATE TABLE IF NOT EXISTS share (
     athlete_id INTEGER NOT NULL REFERENCES athlete(id) ON DELETE CASCADE,
@@ -74,6 +82,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "login" not in columns:
         conn.execute("ALTER TABLE athlete ADD COLUMN login TEXT")
         conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS athlete_login ON athlete(login)")
+    login_columns = {r["name"] for r in conn.execute("PRAGMA table_info(login)")}
+    if "email" not in login_columns:
+        conn.execute("ALTER TABLE login ADD COLUMN email TEXT")
+        conn.execute("ALTER TABLE login ADD COLUMN weekly_mail INTEGER NOT NULL DEFAULT 1")
     # SQLite can't change a CHECK constraint, so the table is rebuilt to allow the athlete role.
     sql = conn.execute("SELECT sql FROM sqlite_master WHERE name = 'login'").fetchone()["sql"]
     if "'athlete'" not in sql:
@@ -84,9 +96,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
                 username TEXT PRIMARY KEY,
                 password_hash TEXT NOT NULL,
                 role TEXT NOT NULL CHECK (role IN ('admin', 'coach', 'athlete')),
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                email TEXT,
+                weekly_mail INTEGER NOT NULL DEFAULT 1
             );
-            INSERT INTO login SELECT * FROM login_old;
+            INSERT INTO login (username, password_hash, role, created_at)
+                SELECT username, password_hash, role, created_at FROM login_old;
             DROP TABLE login_old;
             """
         )
@@ -101,7 +116,7 @@ def logins() -> list[sqlite3.Row]:
     with connect() as conn:
         return conn.execute(
             """
-            SELECT l.username, l.role, l.created_at,
+            SELECT l.username, l.role, l.created_at, l.email, l.weekly_mail,
                    (SELECT COUNT(*) FROM athlete a WHERE a.owner = l.username) AS athletes,
                    (SELECT COUNT(*) FROM share s WHERE s.username = l.username) AS shared,
                    (SELECT a.id FROM athlete a WHERE a.login = l.username) AS profile_id,
@@ -124,6 +139,25 @@ def update_login(username: str, password_hash: str | None = None, role: str | No
             conn.execute("UPDATE login SET password_hash = ? WHERE username = ?", (password_hash, username))
         if role:
             conn.execute("UPDATE login SET role = ? WHERE username = ?", (role, username))
+
+
+def set_mail(username: str, email: str | None, weekly: bool) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE login SET email = ?, weekly_mail = ? WHERE username = ?", (email or None, int(weekly), username)
+        )
+
+
+def mail_sent(username: str, week: str) -> bool:
+    with connect() as conn:
+        return conn.execute(
+            "SELECT 1 FROM mail_log WHERE username = ? AND week = ?", (username, week)
+        ).fetchone() is not None
+
+
+def log_mail(username: str, week: str) -> None:
+    with connect() as conn:
+        conn.execute("INSERT OR IGNORE INTO mail_log (username, week) VALUES (?, ?)", (username, week))
 
 
 def delete_login(username: str) -> None:

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Account · Optimum Recovery{% endblock %}
+{% block body %}
+<h2 style="margin-top:0">Account</h2>
+{% if notice %}<div class="card" style="border-color:var(--green)"><b>{{ notice }}</b></div>{% endif %}
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+<div class="card">
+  <h3 style="margin-top:0">Monday email</h3>
+  <p class="muted">Every Monday morning: each of your athletes' signal for today and a written summary of the week that just ended — to plan the new week.</p>
+  <form class="row" method="post" action="/account">
+    <input name="email" type="email" value="{{ row.email or '' }}" placeholder="you@example.com" style="min-width:260px">
+    <label><input type="checkbox" name="weekly" value="1" {{ 'checked' if row.weekly_mail }}> send the Monday email</label>
+    <button>Save</button>
+  </form>
+  <p style="margin-bottom:0">
+    <a href="/account/preview" target="_blank">Preview this week's email</a>
+    {% if configured and row.email %}
+    · <form method="post" action="/account/test" style="display:inline"><button class="plain">Send me a test now</button></form>
+    {% elif not configured %}
+    · <span class="muted">sending is not set up on the server yet</span>
+    {% endif %}
+  </p>
+</div>
+{% endblock %}
