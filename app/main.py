@@ -230,6 +230,9 @@ def _athlete_page(
 def analysis(athlete_id: int, model: str | None = None, me: Login = Depends(auth.current)):
     """The whole analysis as JSON, for other apps (e.g. Fuel the Train)."""
     a = _visible(me, athlete_id)
+    # Other apps read this without opening the page, so it has to bring the data up to date itself.
+    if _refresh_if_stale(a) is None:
+        a = db.athlete_by_id(athlete_id)
     chosen = models.get(model)
     result = chosen.analyse(db.metrics(a["id"]))
     body = {"athlete": a["name"], "model": chosen.key, "days": _series(result)}
