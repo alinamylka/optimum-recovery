@@ -9,7 +9,7 @@
 <div class="grid">
 {% for c in cards %}
   <a class="card" href="/athletes/{{ c.athlete.id }}" style="text-decoration:none;color:inherit">
-    <div style="font-weight:600">{{ c.athlete.name }}</div>
+    <div style="display:flex;align-items:center;gap:10px;font-weight:600">{{ avatar(c.athlete, 36) }}{{ c.athlete.name }}</div>
     {% if c.shared_by %}<div class="muted" style="font-size:13px">{{ t("shared by {name}", name=c.shared_by) }}</div>{% endif %}
     {% for m, today in c.signals %}
       <div style="margin-top:6px">

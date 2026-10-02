@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS athlete (
     api_key TEXT,
     synced_at TEXT,
     login TEXT UNIQUE,
+    photo TEXT,
     email TEXT,
     language TEXT NOT NULL DEFAULT 'pl',
     weekly_mail INTEGER NOT NULL DEFAULT 1
@@ -94,6 +95,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "email" not in login_columns:
         conn.execute("ALTER TABLE login ADD COLUMN email TEXT")
         conn.execute("ALTER TABLE login ADD COLUMN weekly_mail INTEGER NOT NULL DEFAULT 1")
+    if "photo" not in {r["name"] for r in conn.execute("PRAGMA table_info(athlete)")}:
+        conn.execute("ALTER TABLE athlete ADD COLUMN photo TEXT")
     if "language" not in {r["name"] for r in conn.execute("PRAGMA table_info(login)")}:
         conn.execute("ALTER TABLE login ADD COLUMN language TEXT NOT NULL DEFAULT 'pl'")
     # SQLite can't change a CHECK constraint, so the table is rebuilt to allow the athlete role.
@@ -265,6 +268,11 @@ def update_athlete(athlete_id: int, name: str, intervals_id: str | None, api_key
                 "UPDATE athlete SET name = ?, intervals_id = ?, api_key = ?, synced_at = NULL WHERE id = ?",
                 (name, intervals_id or None, api_key or None, athlete_id),
             )
+
+
+def set_photo(athlete_id: int, photo: str | None) -> None:
+    with connect() as conn:
+        conn.execute("UPDATE athlete SET photo = ? WHERE id = ?", (photo, athlete_id))
 
 
 def link_login(athlete_id: int, username: str | None) -> None:

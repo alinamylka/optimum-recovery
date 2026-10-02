@@ -14,8 +14,8 @@ import pandas as pd
 INTERVALS = "https://intervals.icu/api/v1"
 
 
-def fetch_intervals_name(athlete_id: str, api_key: str) -> str | None:
-    """The athlete's name as set in intervals.icu, or None when it can't be read."""
+def fetch_intervals_profile(athlete_id: str, api_key: str) -> dict | None:
+    """The athlete's name and photo as set in intervals.icu, or None when they can't be read."""
     try:
         response = httpx.get(f"{INTERVALS}/athlete/{athlete_id or '0'}", auth=("API_KEY", api_key), timeout=15)
         response.raise_for_status()
@@ -23,7 +23,14 @@ def fetch_intervals_name(athlete_id: str, api_key: str) -> str | None:
     except (httpx.HTTPError, ValueError):
         return None
     full = " ".join(p for p in (profile.get("firstname"), profile.get("lastname")) if p and p.strip())
-    return (full or profile.get("name") or "").strip() or None
+    photo = profile.get("profile_medium") or ""
+    # Without a photo intervals.icu hands out its own placeholder, a relative path.
+    return {"name": (full or profile.get("name") or "").strip() or None, "photo": photo if photo.startswith("https://") else None}
+
+
+def fetch_intervals_name(athlete_id: str, api_key: str) -> str | None:
+    profile = fetch_intervals_profile(athlete_id, api_key)
+    return profile and profile["name"]
 
 
 def fetch_intervals(athlete_id: str, api_key: str, days: int = 400) -> pd.DataFrame:

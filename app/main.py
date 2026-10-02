@@ -9,6 +9,7 @@ from pathlib import Path
 
 import httpx
 from jinja2 import pass_context
+from markupsafe import Markup
 import pandas as pd
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
@@ -18,7 +19,7 @@ from fastapi.templating import Jinja2Templates
 from . import auth, db, describe, i18n, mailer, models
 from .auth import Login
 from .model import Params, params_dict
-from .sources import fetch_intervals, fetch_intervals_name, parse_export
+from .sources import fetch_intervals, fetch_intervals_name, fetch_intervals_profile, parse_export
 
 app = FastAPI(title="Optimum Recovery")
 templates = Jinja2Templates(
@@ -33,6 +34,25 @@ def _t(context, text: str, **values):
 
 
 templates.env.globals["t"] = _t
+
+AVATAR_COLOURS = ("#2f6fde", "#2e9e5b", "#8a63d2", "#d07a2b", "#c2477a", "#2a8f9a")
+
+
+def _avatar(a, size: int = 36) -> Markup:
+    """The athlete's intervals.icu photo, or their initials on a colour of their own."""
+    style = f"width:{size}px;height:{size}px"
+    if a["photo"]:
+        return Markup('<img class="avatar" src="{}" alt="" style="{}" loading="lazy" referrerpolicy="no-referrer">').format(
+            a["photo"], style
+        )
+    initials = "".join(part[0] for part in a["name"].split()[:2]).upper() or "?"
+    colour = AVATAR_COLOURS[sum(map(ord, a["name"])) % len(AVATAR_COLOURS)]
+    return Markup('<span class="avatar" style="{};background:{};font-size:{}px">{}</span>').format(
+        style, colour, round(size * 0.4), initials
+    )
+
+
+templates.env.globals["avatar"] = _avatar
 STATIC = Path(__file__).parent / "static"
 # Icons are public: browsers fetch them before anyone signs in.
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
@@ -681,6 +701,9 @@ def _sync(a) -> str | None:
     except httpx.HTTPError as e:
         return f"intervals.icu sync failed: {e}"
     db.save_metrics(a["id"], frame, synced=True)
+    profile = fetch_intervals_profile(a["intervals_id"] or "0", a["api_key"])
+    if profile is not None:
+        db.set_photo(a["id"], profile["photo"])
     if frame["hrv"].dropna().empty:
         # A connection that works but brings no HRV looks exactly like an empty
         # athlete; say which it is, since the fix is in intervals.icu, not here.
