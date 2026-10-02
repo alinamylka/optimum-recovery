@@ -158,29 +158,47 @@ def healthz():
 
 
 @app.get("/", response_class=HTMLResponse)
-def index(request: Request, me: Login = Depends(auth.current)):
+def index(request: Request, tab: str | None = None, me: Login = Depends(auth.current)):
     """
-    Everyone sees their own profile first. Admins then see every athlete grouped
-    by coach; coaches their athletes and those shared with them.
+    One group of athletes at a time, picked in the Athletes menu: admins see every
+    coach's athletes, coaches their own and those shared with them. Your own
+    profile is under My data; athletes go straight there.
     """
+    if me.role == "athlete":
+        own = db.own_profile(me.username)
+        return RedirectResponse(f"/athletes/{own['id']}" if own else "/account", status_code=303)
+    groups = _athlete_groups(me)
+    current = tab if tab in groups else next(iter(groups), None)
+    label, athletes = groups[current] if current else ("Athletes", [])
+    return templates.TemplateResponse(
+        request, "index.html", {"me": me, "label": label, "cards": [_card(me, a) for a in athletes]}
+    )
+
+
+def _athlete_groups(me: Login) -> dict[str, tuple[str, list]]:
+    """The groups the Athletes menu offers, keyed by the ?tab= that shows them."""
     own = db.own_profile(me.username)
-    groups: dict[str, list] = {}
-    if own:
-        groups["You"] = [own]
+    groups: dict[str, tuple[str, list]] = {}
     if me.admin:
         names = _names()
         for a in db.all_athletes():
             if not own or a["id"] != own["id"]:
-                groups.setdefault(f"Coach: {names[a['owner']]}", []).append(a)
-    else:
-        coached = [a for a in db.athletes(me.username) if not own or a["id"] != own["id"]]
-        if coached:
-            groups["Your athletes"] = coached
-        shared = db.shared_with(me.username)
-        if shared:
-            groups["Shared with you"] = shared
-    cards = {heading: [_card(me, a) for a in athletes] for heading, athletes in groups.items()}
-    return templates.TemplateResponse(request, "index.html", {"me": me, "groups": cards})
+                groups.setdefault(a["owner"], (names.get(a["owner"], a["owner"]), []))[1].append(a)
+        return dict(sorted(groups.items(), key=lambda g: g[1][0].lower()))
+    groups["mine"] = ("Your athletes", [a for a in db.athletes(me.username) if not own or a["id"] != own["id"]])
+    shared = db.shared_with(me.username)
+    if shared:
+        groups["shared"] = ("Shared with you", shared)
+    return groups
+
+
+def _athlete_menu(me: Login | None) -> list[tuple[str, str, int]]:
+    if me is None or me.role == "athlete":
+        return []
+    return [(key, label, len(athletes)) for key, (label, athletes) in _athlete_groups(me).items()]
+
+
+templates.env.globals["athlete_menu"] = _athlete_menu
 
 
 def _names() -> dict[str, str]:
@@ -198,7 +216,9 @@ def _card(me: Login, a) -> dict:
 
 @app.get("/athletes/new", response_class=HTMLResponse)
 def new_athlete(request: Request, me: Login = Depends(auth.coach)):
-    return templates.TemplateResponse(request, "add_athlete.html", {"me": me})
+    names = _names()
+    coaches = [(u["username"], names[u["username"]]) for u in db.logins() if u["role"] == "coach"] if me.admin else []
+    return templates.TemplateResponse(request, "add_athlete.html", {"me": me, "coaches": coaches})
 
 
 @app.post("/athletes")
@@ -207,12 +227,15 @@ def create(
     name: str = Form(""),
     intervals_id: str = Form(""),
     api_key: str = Form(""),
+    coach: str = Form(""),
 ):
+    # Admins add athletes straight to a coach; everyone else to themselves.
+    owner = coach if me.admin and coach and db.login(coach) else me.username
     # Left empty, the name comes from the athlete's intervals.icu profile.
     name = name.strip() or (api_key.strip() and fetch_intervals_name(intervals_id.strip(), api_key.strip()))
     if not name:
         raise HTTPException(400, "Give the athlete a name, or an intervals.icu key whose profile has one")
-    athlete_id = db.add_athlete(me.username, name, intervals_id.strip(), api_key.strip())
+    athlete_id = db.add_athlete(owner, name, intervals_id.strip(), api_key.strip())
     if api_key.strip():
         _sync(db.athlete_by_id(athlete_id))
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)

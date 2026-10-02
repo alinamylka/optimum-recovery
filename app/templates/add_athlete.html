@@ -7,6 +7,9 @@
     <input name="name" placeholder="Name (empty: from intervals.icu)" autofocus>
     <input name="intervals_id" placeholder="intervals.icu athlete id (optional)">
     <input name="api_key" placeholder="intervals.icu API key (optional)" type="password">
+    {% if coaches %}
+    <label>Coach <select name="coach">{% for username, name in coaches %}<option value="{{ username }}">{{ name }}</option>{% endfor %}</select></label>
+    {% endif %}
     <button>Add</button>
   </form>
   <p class="muted" style="margin-bottom:0">

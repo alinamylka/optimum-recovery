@@ -1,7 +1,11 @@
 {% extends "base.html" %}
 {% block body %}
-{% for heading, cards in groups.items() %}
-<h3>{{ heading }}</h3>
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+  <h3 style="margin:0">{{ label }}</h3>
+  <a href="/athletes/new" style="margin-left:auto"><button>+ Add athlete</button></a>
+</div>
+
+{% if cards %}
 <div class="grid">
 {% for c in cards %}
   <a class="card" href="/athletes/{{ c.athlete.id }}" style="text-decoration:none;color:inherit">
@@ -18,7 +22,6 @@
 {% endfor %}
 </div>
 {% else %}
-<p class="muted">No athletes yet{% if me.role != 'athlete' %} — <a href="/athletes/new">add the first one</a>{% endif %}.</p>
-{% endfor %}
-
+<p class="muted">No athletes here yet.</p>
+{% endif %}
 {% endblock %}
