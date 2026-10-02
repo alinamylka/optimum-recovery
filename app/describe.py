@@ -93,6 +93,25 @@ _EN = {
     "recovered": "Full recovery on {day}: the debt cleared — a good point to start the next block. ",
     "absorbed": "Load was absorbed within capacity. ",
     "no_week": "No data last week.",
+    "v_calm": "A steady week: HRV inside the normal range every day — the load was being absorbed and hard sessions were fine. ",
+    "v_tired": "A week of fatigue: HRV below the normal range on {days} ({when}). ",
+    "v_high": "A week above the normal range: {days} ({when}). ",
+    "v_dip": "Mostly inside the normal range, with a short dip below it ({when}). ",
+    "v_spike": "Mostly inside the normal range, with a short rise above it ({when}). ",
+    "v_mixed": "An unsettled week: HRV below the range on {below} and above it on {above}. ",
+    "trend_stayed": "The 7-day average held around {last:.0f} ms (normal {lo:.0f}–{hi:.0f}). ",
+    "trend_rose": "The 7-day average rose from {first:.0f} to {last:.0f} ms (normal {lo:.0f}–{hi:.0f}). ",
+    "trend_fell": "The 7-day average fell from {first:.0f} to {last:.0f} ms (normal {lo:.0f}–{hi:.0f}). ",
+    "above_small": "Only {over:.0f} ms over the top of the range: formally an easy day, in practice the edge of normal. ",
+    "above_after_low": "HRV jumped {over:.0f} ms above the range right after a low spell — that is the typical "
+    "rebound after overload (Le Meur 2013), not freshness: keep the intensity down until it settles. ",
+    "above_big": "HRV went clearly above the range (up to {over:.0f} ms over). A sudden rise can be the body reacting "
+    "to load; the method says easy until the average is back inside. ",
+    "below_small": "Only {under:.0f} ms under the range — easy days were enough. ",
+    "below_big": "It fell well below (up to {under:.0f} ms under): accumulated fatigue, or illness, stress or travel. "
+    "Easy training or rest until the average comes back. ",
+    "below_still": "The week ends {under:.0f} ms below the range — start the next one easy. ",
+    "weekdays": ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
 }
 
 _PL = {
@@ -129,6 +148,25 @@ _PL = {
     "recovered": "Pełna regeneracja {day}: dług się wyzerował — dobry moment na start kolejnego bloku. ",
     "absorbed": "Obciążenie mieściło się w możliwościach organizmu. ",
     "no_week": "Brak danych z zeszłego tygodnia.",
+    "v_calm": "Spokojny tydzień: HRV każdego dnia w normie — organizm przyswajał obciążenie, mocne jednostki były OK. ",
+    "v_tired": "Tydzień zmęczenia: HRV poniżej normy przez {days} ({when}). ",
+    "v_high": "Tydzień powyżej normy: {days} ({when}). ",
+    "v_dip": "Przeważnie w normie, z krótkim spadkiem poniżej ({when}). ",
+    "v_spike": "Przeważnie w normie, z krótkim wyjściem ponad normę ({when}). ",
+    "v_mixed": "Niespokojny tydzień: HRV poniżej normy przez {below} i powyżej przez {above}. ",
+    "trend_stayed": "7-dniowa średnia trzymała się około {last:.0f} ms (norma {lo:.0f}–{hi:.0f}). ",
+    "trend_rose": "7-dniowa średnia wzrosła z {first:.0f} do {last:.0f} ms (norma {lo:.0f}–{hi:.0f}). ",
+    "trend_fell": "7-dniowa średnia spadła z {first:.0f} do {last:.0f} ms (norma {lo:.0f}–{hi:.0f}). ",
+    "above_small": "Tylko {over:.0f} ms ponad górną granicę: formalnie dzień lekki, w praktyce skraj normy. ",
+    "above_after_low": "HRV skoczyło o {over:.0f} ms ponad normę zaraz po okresie spadku — to typowe odbicie po "
+    "przeciążeniu (Le Meur 2013), a nie świeżość: trzymaj niską intensywność, aż się uspokoi. ",
+    "above_big": "HRV wyraźnie powyżej normy (nawet o {over:.0f} ms). Nagły wzrost bywa reakcją organizmu na obciążenie; "
+    "metoda zaleca lekko, aż średnia wróci do normy. ",
+    "below_small": "Tylko {under:.0f} ms poniżej normy — lżejsze dni wystarczyły. ",
+    "below_big": "Spadek był wyraźny (nawet o {under:.0f} ms): nagromadzone zmęczenie albo choroba, stres, podróż. "
+    "Lekki trening lub odpoczynek, aż średnia wróci. ",
+    "below_still": "Tydzień kończy się {under:.0f} ms poniżej normy — zacznij kolejny spokojnie. ",
+    "weekdays": ("pon", "wt", "śr", "czw", "pt", "sob", "niedz"),
 }
 
 
@@ -141,39 +179,73 @@ def _coverage(week: pd.DataFrame, t: dict) -> str:
     return "" if n == 7 else t["coverage"].format(days=t["days"](n))
 
 
+def _when(days: pd.DatetimeIndex, t: dict) -> str:
+    """Weekdays as short names, runs joined with a dash: "Thu–Sat", "Mon, Wed"."""
+    numbers = sorted({d.weekday() for d in days})
+    runs, run = [], [numbers[0]]
+    for n in numbers[1:]:
+        if n == run[-1] + 1:
+            run.append(n)
+        else:
+            runs.append(run)
+            run = [n]
+    runs.append(run)
+    names = t["weekdays"]
+    return ", ".join(names[r[0]] if len(r) == 1 else f"{names[r[0]]}–{names[r[-1]]}" for r in runs)
+
+
 def _hrv_week(w: pd.DataFrame, previous: pd.DataFrame | None, t: dict) -> str:
+    """The verdict first, then the trend, then what the days outside the range mean."""
     parts = [_coverage(w, t)]
     first, last = w["hrv_week"].iloc[0], w["hrv_week"].iloc[-1]
     lo, hi = w["hrv_low"].iloc[-1], w["hrv_high"].iloc[-1]
-    key = "stayed" if abs(last - first) < 1.5 else ("rose" if last > first else "fell")
-    parts.append(t[key].format(first=first, last=last, lo=lo, hi=hi))
+    above_days = w[w["state"] == "Above the normal range"]
+    below_days = w[w["state"] == "Below the normal range"]
+    above, below = len(above_days), len(below_days)
 
-    states = w["state"].value_counts()
-    inside = int(states.get("Inside the normal range", 0))
-    below = int(states.get("Below the normal range", 0))
-    above = int(states.get("Above the normal range", 0))
-    if below == 0 and above == 0:
-        parts.append(t["all_inside"])
+    if len(w) < 3:
+        pass  # too few days to judge the week
+    elif not above and not below:
+        parts.append(t["v_calm"])
+    elif below and above:
+        parts.append(t["v_mixed"].format(below=t["days"](below), above=t["days"](above)))
+    elif below >= 3:
+        parts.append(t["v_tired"].format(days=t["days"](below), when=_when(below_days.index, t)))
+    elif below:
+        parts.append(t["v_dip"].format(when=_when(below_days.index, t)))
+    elif above >= 3:
+        parts.append(t["v_high"].format(days=t["days"](above), when=_when(above_days.index, t)))
     else:
-        if below:
-            parts.append(t["below"].format(days=t["days"](below)))
-        if above:
-            parts.append(t["above"].format(days=t["days"](above)))
-        if inside:
-            parts.append(t["inside"].format(days=t["days"](inside)))
+        parts.append(t["v_spike"].format(when=_when(above_days.index, t)))
+
+    trend = "trend_stayed" if abs(last - first) < 1.5 else ("trend_rose" if last > first else "trend_fell")
+    parts.append(t[trend].format(first=first, last=last, lo=lo, hi=hi))
+
+    if below:
+        under = float((below_days["hrv_low"] - below_days["hrv_week"]).max())
+        if w["state"].iloc[-1] == "Below the normal range":
+            parts.append(t["below_still"].format(under=max(w["hrv_low"].iloc[-1] - last, 1)))
+        else:
+            parts.append(t["below_small" if under < 0.05 * lo else "below_big"].format(under=max(under, 1)))
+    if above:
+        over = float((above_days["hrv_week"] - above_days["hrv_high"]).max())
+        # A jump right after days below the range is the classic rebound.
+        before = w[w.index < above_days.index[0]]
+        if previous is not None and not previous.empty:
+            before = pd.concat([previous, before])
+        low_before = (before.tail(5)["state"] == "Below the normal range").any()
+        key = "above_after_low" if low_before else ("above_small" if over < 0.05 * hi else "above_big")
+        parts.append(t[key].format(over=max(over, 1)))
 
     cv = w["cv"].mean()
     if previous is not None and not previous.empty and pd.notna(cv) and pd.notna(previous["cv"].mean()):
-        before = previous["cv"].mean()
-        prev_hrv = previous["hrv_week"].iloc[-1]
-        if cv > before * 1.3:
-            parts.append(t["cv_up"].format(before=before, now=cv))
-            if last < prev_hrv:
+        before_cv = previous["cv"].mean()
+        if cv > before_cv * 1.3:
+            parts.append(t["cv_up"].format(before=before_cv, now=cv))
+            if last < previous["hrv_week"].iloc[-1]:
                 parts.append(t["cv_warning"])
-        elif cv < before / 1.3:
-            parts.append(t["cv_down"].format(before=before, now=cv))
-        else:
-            parts.append(t["cv_same"].format(now=cv))
+        elif cv < before_cv / 1.3:
+            parts.append(t["cv_down"].format(before=before_cv, now=cv))
     return "".join(parts).strip()
 
 
