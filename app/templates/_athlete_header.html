@@ -1,14 +1,18 @@
-<h2 style="margin-top:0">{{ athlete.name }}</h2>
+<div style="display:flex;align-items:center;gap:12px">
+  <h2 style="margin:0">{{ athlete.name }}</h2>
+  {% if configurable %}
+  {% if view == 'settings' %}
+  <a href="/athletes/{{ athlete.id }}" style="margin-left:auto"><button class="plain">← Dashboard</button></a>
+  {% else %}
+  <a href="/athletes/{{ athlete.id }}/settings" style="margin-left:auto"><button>Settings</button></a>
+  {% endif %}
+  {% endif %}
+</div>
 {% if is_self and athlete.owner != me.username %}<p class="muted">Your profile · coach: {{ coach_name }}</p>
 {% elif not mine %}<p class="muted">Shared with you by {{ coach_name }} — view only.</p>
-{% elif athlete.owner != me.username %}<p class="muted">Coach: {{ coach_name }} (you see it as admin)</p>{% endif %}
+{% elif athlete.owner != me.username %}<p class="muted">Coach: {{ coach_name }} (you see it as admin)</p>
+{% else %}<div style="height:12px"></div>{% endif %}
 {% if notice %}
 <div class="card" style="border-color:var(--green)"><b>{{ notice }}</b></div>
 {% endif %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
-{% if configurable %}
-<nav class="tabs" style="margin-bottom:16px">
-  <a href="/athletes/{{ athlete.id }}" class="{{ 'active' if view != 'settings' }}">Dashboard</a>
-  <a href="/athletes/{{ athlete.id }}/settings" class="{{ 'active' if view == 'settings' }}">Settings</a>
-</nav>
-{% endif %}
