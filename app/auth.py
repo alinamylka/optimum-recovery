@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import os
 import re
 import secrets
@@ -15,6 +16,8 @@ from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from . import db
+
+log = logging.getLogger("uvicorn.error")
 
 ROLES = ("admin", "coach", "athlete")
 ITERATIONS = 200_000
@@ -101,11 +104,15 @@ def _check(purpose: str, value: str | None):
         username, expires, signature = (value or "").rsplit("|", 2)
         expires = int(expires)
     except ValueError:
+        if value:
+            log.warning("%s token unreadable: %r", purpose, value[:40])
         return None
     row = db.login(username)
     if row is None or expires < time.time():
+        log.warning("%s token for %s: %s", purpose, username, "unknown login" if row is None else "expired")
         return None
     if not hmac.compare_digest(signature, _sign(purpose, username, expires, row["password_hash"])):
+        log.warning("%s token for %s: signature differs (password or key changed)", purpose, username)
         return None
     return row
 
