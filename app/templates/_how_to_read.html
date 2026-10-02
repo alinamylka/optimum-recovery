@@ -1,0 +1,127 @@
+<details class="card guide">
+  <summary>{{ t("How to read this") }}</summary>
+{% if model.key == 'debt' %}
+{% if lang == 'pl' %}
+  <p class="lead">Dług zmęczeniowy to własny, eksperymentalny wskaźnik: ile zmęczenia się nazbierało i czy organizm nadąża z regeneracją.</p>
+
+  <h4>Gotowość dnia (−9…+9)</h4>
+  <p>Każdego dnia trzy pomiary są porównywane z własną bazą zawodnika z ostatnich 60 dni:</p>
+  <div class="weights">
+    <div><b>50%</b><span>HRV</span></div>
+    <div><b>30%</b><span>tętno spoczynkowe</span></div>
+    <div><b>20%</b><span>stres</span></div>
+  </div>
+  <p>Wynik ujemny — organizm wygląda gorzej niż zwykle, dodatni — lepiej.</p>
+
+  <h4>Jak zmienia się dług</h4>
+  <ul>
+    <li><b>Dzień ujemny</b> dokłada do długu — im gorzej, tym więcej.</li>
+    <li><b>Dzień dodatni</b> spłaca dług.</li>
+    <li><b>Dzień neutralny</b> — dług sam maleje o ok. 8%, zmęczenie wygasa.</li>
+    <li><b>Głęboki dług</b> (powyżej {{ params.red|int }}) spłaca się wolniej: wyczerpany organizm regeneruje się mniej na każdy dobry dzień.</li>
+  </ul>
+
+  <h4>Progi</h4>
+  <div class="levels">
+    <div class="level"><span class="dot green"></span><b>0 – {{ params.amber|int }}</b><span>Obciążenie przyswajane na bieżąco. 0 = pełna regeneracja (zielona pionowa linia na wykresie).</span></div>
+    <div class="level"><span class="dot amber"></span><b>{{ params.amber|int }} – {{ params.red|int }}</b><span>Organizm nie nadąża, zaczyna się przeciążenie. Trenuj spokojnie, bez dokładania obciążenia.</span></div>
+    <div class="level"><span class="dot red"></span><b>powyżej {{ params.red|int }}</b><span>Grozi przeciążenie niefunkcjonalne, z którego wychodzi się tygodniami. Tylko lekko albo odpoczynek.</span></div>
+  </div>
+
+  <h4>Na co uważać</h4>
+  <div class="warnings">
+    <div><b>Odbicie</b><span>Nagły skok HRV, gdy dług wciąż jest. Często to reakcja na przeciążenie, a nie świeżość — nie spłaca długu.</span></div>
+    <div><b>Ukryty spadek</b><span>Tygodniowa średnia HRV poniżej normy, choć żaden pojedynczy dzień nie wygląda źle.</span></div>
+  </div>
+
+  <p class="muted small">Podstawy: zmęczenie, które narasta i wygasa (Banister i Calvert 1976), definicje przeciążenia (Meeusen 2013), odbicie HRV (Le Meur 2013). Wzór, wagi i progi {{ params.amber|int }} / {{ params.red|int }} (z wykresów Arkadiusza) są własne i wymagają kalibracji — stąd „eksperymentalny”.</p>
+{% else %}
+  <p class="lead">Fatigue debt is our own, experimental measure: how much fatigue has built up and whether the body keeps up with recovery.</p>
+
+  <h4>Daily readiness (−9…+9)</h4>
+  <p>Every day three readings are compared with the athlete's own baseline of the last 60 days:</p>
+  <div class="weights">
+    <div><b>50%</b><span>HRV</span></div>
+    <div><b>30%</b><span>resting HR</span></div>
+    <div><b>20%</b><span>stress</span></div>
+  </div>
+  <p>Negative — the body looks worse than usual, positive — better.</p>
+
+  <h4>How the debt moves</h4>
+  <ul>
+    <li><b>A negative day</b> adds to the debt — the worse, the more.</li>
+    <li><b>A positive day</b> pays it off.</li>
+    <li><b>A neutral day</b> — the debt shrinks by about 8% on its own, fatigue fades.</li>
+    <li><b>A deep debt</b> (above {{ params.red|int }}) clears more slowly: an exhausted body recovers less per good day.</li>
+  </ul>
+
+  <h4>Thresholds</h4>
+  <div class="levels">
+    <div class="level"><span class="dot green"></span><b>0 – {{ params.amber|int }}</b><span>Load absorbed day to day. 0 = full recovery (green vertical line on the chart).</span></div>
+    <div class="level"><span class="dot amber"></span><b>{{ params.amber|int }} – {{ params.red|int }}</b><span>The body no longer keeps up, overreaching starts. Train calmly, add no load.</span></div>
+    <div class="level"><span class="dot red"></span><b>above {{ params.red|int }}</b><span>Risk of non-functional overreaching, which takes weeks to come out of. Easy only, or rest.</span></div>
+  </div>
+
+  <h4>Watch out for</h4>
+  <div class="warnings">
+    <div><b>Rebound</b><span>A sudden HRV jump while still in debt. Often the body reacting to overload, not freshness — it doesn't pay off the debt.</span></div>
+    <div><b>Chronic creep</b><span>The weekly HRV average sits below normal although no single day looks bad.</span></div>
+  </div>
+
+  <p class="muted small">Foundations: fatigue that builds and fades (Banister & Calvert 1976), definitions of overreaching (Meeusen 2013), HRV rebound (Le Meur 2013). The formula, weights and the {{ params.amber|int }} / {{ params.red|int }} thresholds (from Arkadiusz's charts) are our own and need calibrating — hence "experimental".</p>
+{% endif %}
+{% else %}
+{% if lang == 'pl' %}
+  <p class="lead">Codzienna decyzja: mocno czy lekko — na podstawie tego, czy 7-dniowa średnia HRV mieści się w Twojej normie.</p>
+
+  <h4>Kolory</h4>
+  <div class="levels">
+    <div class="level"><span class="dot green"></span><b>W normie</b><span>Mocny trening zgodnie z planem (najwyżej 2 mocne dni z rzędu).</span></div>
+    <div class="level"><span class="dot amber"></span><b>Poza normą</b><span>Lekki trening albo odpoczynek, aż średnia wróci do normy — dotyczy wyjścia w dół i w górę.</span></div>
+  </div>
+
+  <h4>Wykres</h4>
+  <ul>
+    <li><b>Górny pasek</b> — decyzja na każdy dzień.</li>
+    <li><b>Kropki</b> — dzienne pomiary HRV; <b>linia</b> — 7-dniowa średnia (liczona na logarytmach, pokazana w ms).</li>
+    <li><b>Szary pas</b> — norma: średnia ± 0,5 odchylenia standardowego. Liczona z pierwszych 2 tygodni, potem co 4 tygodnie z 4 poprzednich — dlatego zmienia się skokowo.</li>
+    <li><b>Tętno spoczynkowe</b> — tylko dla kontekstu; decyzja opiera się wyłącznie na HRV.</li>
+  </ul>
+
+  <h4>CV — zmienność z dnia na dzień</h4>
+  <p>Odchylenie standardowe dziennych pomiarów HRV z 7 dni podzielone przez ich średnią, w procentach. Niskie CV — organizm stabilny; wysokie — duże wahania (ciężkie treningi, słaby sen, stres, choroba).</p>
+
+  <h4>Na co uważać</h4>
+  <div class="warnings">
+    <div><b>Wyjście ponad normę</b><span>Też oznacza lekki dzień: w badaniach wysokie HRV nie jest traktowane jako „dodatkowa świeżość”.</span></div>
+    <div><b>Rosnące CV przy spadającym HRV</b><span>Wzorzec widziany przed przetrenowaniem (Plews 2012). Prace nie podają progu, więc nie zmienia decyzji.</span></div>
+  </div>
+{% else %}
+  <p class="lead">A daily decision: hard or easy — based on whether the 7-day HRV average is inside your normal range.</p>
+
+  <h4>Colours</h4>
+  <div class="levels">
+    <div class="level"><span class="dot green"></span><b>Inside</b><span>Hard training as planned (at most 2 hard days in a row).</span></div>
+    <div class="level"><span class="dot amber"></span><b>Outside</b><span>Easy training or rest until the average is back — whether it left the range downwards or upwards.</span></div>
+  </div>
+
+  <h4>The chart</h4>
+  <ul>
+    <li><b>Top strip</b> — the decision for each day.</li>
+    <li><b>Dots</b> — daily HRV readings; <b>line</b> — the 7-day average (averaged as logarithms, shown in ms).</li>
+    <li><b>Grey band</b> — the normal range: mean ± 0.5 standard deviation. Taken from the first 2 weeks, then every 4 weeks from the 4 before — so it moves in steps.</li>
+    <li><b>Resting HR</b> — context only; the decision rests on HRV alone.</li>
+  </ul>
+
+  <h4>CV — day-to-day variation</h4>
+  <p>The standard deviation of the 7 daily HRV readings divided by their mean, in percent. Low CV — a stable system; high — big swings (hard training, poor sleep, stress, illness).</p>
+
+  <h4>Watch out for</h4>
+  <div class="warnings">
+    <div><b>Above the range</b><span>Also means an easy day: in the papers a high HRV is not read as "extra fresh".</span></div>
+    <div><b>Rising CV with falling HRV</b><span>The pattern seen before overtraining (Plews 2012). The papers give no threshold, so it doesn't change the decision.</span></div>
+  </div>
+{% endif %}
+{% endif %}
+  <p class="muted small" style="margin-bottom:0">{{ t("Proof of concept. Not medical advice.") }}</p>
+</details>

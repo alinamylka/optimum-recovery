@@ -57,43 +57,7 @@
 <div class="card muted">{% if configurable %}{{ t('No data yet — connect intervals.icu or upload an export in <a href="{url}">Settings</a>.', url="/athletes/" ~ athlete.id ~ "/settings") }}{% else %}{{ t("No data yet.") }}{% endif %}</div>
 {% endif %}
 
-<details class="card">
-  <summary>{{ t("How to read this") }}</summary>
-  {% if lang == 'pl' %}
-  {% if model.key == 'debt' %}
-  <p><b>Dług zmęczeniowy</b> to własny, eksperymentalny wskaźnik: ile zmęczenia się nazbierało i czy organizm nadąża z regeneracją.</p>
-  <p><b>Gotowość</b> (−9…+9): każdego dnia HRV, tętno spoczynkowe i stres są porównywane z własną bazą zawodnika z ostatnich 60 dni (wagi: HRV 50%, tętno 30%, stres 20%). Ujemna = organizm wygląda gorzej niż zwykle, dodatnia = lepiej.</p>
-  <p><b>Jak rośnie i spada dług</b>: dzień ujemny dokłada do długu (im gorzej, tym więcej), dzień dodatni go spłaca, a w dzień neutralny dług sam maleje o około 8% — zmęczenie stopniowo wygasa. Gdy dług jest głęboki (powyżej {{ params.red|int }}), spłaca się wolniej: wyczerpany organizm regeneruje się mniej na każdy dobry dzień.</p>
-  <p><b>Progi</b>: 0 = pełna regeneracja, dług spłacony (zielona pionowa linia na wykresie). Poniżej {{ params.amber|int }} — <span class="dot green"></span>obciążenie przyswajane na bieżąco. {{ params.amber|int }}–{{ params.red|int }} — <span class="dot amber"></span>organizm nie nadąża, zaczyna się przeciążenie: trenuj spokojnie, bez dokładania obciążenia. Powyżej {{ params.red|int }} — <span class="dot red"></span>grozi przeciążenie niefunkcjonalne, z którego wychodzi się tygodniami: tylko lekko albo odpoczynek.</p>
-  <p><b>Odbicie</b>: nagły skok HRV, gdy dług wciąż jest — często reakcja organizmu na przeciążenie, a nie świeżość, więc nie spłaca długu.</p>
-  <p><b>Ukryty spadek</b>: tygodniowa średnia HRV jest poniżej normy, choć żaden pojedynczy dzień nie wygląda źle.</p>
-  <p class="muted">Podstawy: zmęczenie, które narasta i wygasa (Banister i Calvert 1976), definicje przeciążenia (Meeusen 2013), odbicie HRV (Le Meur 2013). Wzór, wagi i progi {{ params.amber|int }} / {{ params.red|int }} (z wykresów Arkadiusza) są własne i wymagają kalibracji — stąd etykieta „eksperymentalny”.</p>
-  {% else %}
-  <p><b>Górny pasek</b>: decyzja na dany dzień. Zielony = mocny trening zgodnie z planem, żółty = niska intensywność albo odpoczynek.</p>
-  <p><b>HRV</b>: kropki to dzienne pomiary, linia to 7-dniowa średnia ln(RMSSD) pokazana w ms, szary pas to norma (najmniejsza istotna zmiana, średnia ± 0,5 SD). Pas pochodzi z pierwszych 2 tygodni, potem jest przeliczany co 4 tygodnie z 4 poprzednich — dlatego zmienia się skokowo.</p>
-  <p><b>Wyjście ponad pas</b> też oznacza lekki dzień: w badaniach wysokie HRV nie jest traktowane jako „dodatkowa świeżość”.</p>
-  <p><b>CV</b> (współczynnik zmienności): jak bardzo HRV skacze z dnia na dzień — odchylenie standardowe dziennych pomiarów z 7 dni podzielone przez ich średnią, w procentach. Niskie CV to stabilny organizm, wysokie to duże wahania (ciężkie treningi, słaby sen, stres, choroba). Ważny jest trend: spadające CV często towarzyszy dobrej adaptacji, a rosnące CV przy spadającej średniej HRV to sygnał ostrzegawczy (Plews 2012). Prace nie podają progu, więc CV nie zmienia decyzji — jest tłem do interpretacji.</p>
-  <p><b>Tętno spoczynkowe</b> jest pokazane tylko dla kontekstu; ta metoda decyduje wyłącznie na podstawie HRV.</p>
-  {% endif %}
-  {% else %}
-  {% if model.key == 'debt' %}
-  <p><b>Fatigue debt</b> is our own, experimental measure: how much fatigue has built up and whether the body keeps up with recovery.</p>
-  <p><b>Readiness</b> (−9…+9): every day HRV, resting HR and stress are compared with the athlete's own baseline of the last 60 days (weights: HRV 50%, resting HR 30%, stress 20%). Negative = the body looks worse than usual, positive = better.</p>
-  <p><b>How the debt moves</b>: a negative day adds to it (the worse, the more), a positive day pays it off, and on a neutral day it shrinks by about 8% on its own — fatigue fades. Once the debt is deep (above {{ params.red|int }}) it clears more slowly: an exhausted body recovers less per good day.</p>
-  <p><b>Thresholds</b>: 0 = full recovery, debt cleared (green vertical line on the chart). Below {{ params.amber|int }} — <span class="dot green"></span>load is absorbed day to day. {{ params.amber|int }}–{{ params.red|int }} — <span class="dot amber"></span>the body no longer keeps up, overreaching starts: train calmly, add no load. Above {{ params.red|int }} — <span class="dot red"></span>risk of non-functional overreaching, which takes weeks to come out of: easy only, or rest.</p>
-  <p><b>Rebound</b>: a sudden HRV jump while still in debt — often the body's reaction to overload, not freshness, so it does not pay off the debt.</p>
-  <p><b>Chronic creep</b>: the weekly HRV average sits below the normal range even though no single day looks bad.</p>
-  <p class="muted">Foundations: fatigue that builds and fades (Banister & Calvert 1976), definitions of overreaching (Meeusen 2013), HRV rebound (Le Meur 2013). The formula, weights and the {{ params.amber|int }} / {{ params.red|int }} thresholds (from Arkadiusz's charts) are our own and need calibrating — hence "experimental".</p>
-  {% else %}
-  <p><b>Top strip</b>: the day's decision. Green = high intensity as planned, amber = low intensity or rest.</p>
-  <p><b>HRV</b>: dots are daily readings, the line is the 7-day average of ln(RMSSD) shown in ms, the grey band is the normal range (smallest worthwhile change, mean ± 0.5 SD). The band comes from the first 2 weeks, then is recalculated every 4 weeks from the 4 weeks before — so it moves in steps.</p>
-  <p><b>Leaving the band upwards</b> also means an easy day: in the papers a high HRV is not read as "extra fresh".</p>
-  <p><b>CV</b> (coefficient of variation): how much HRV jumps from day to day — the standard deviation of the 7 daily readings divided by their mean, in percent. Low CV is a stable system, high CV big swings (hard training, poor sleep, stress, illness). The trend matters: a falling CV often goes with good adaptation, a rising CV with a falling HRV average is a warning sign (Plews 2012). The papers give no threshold, so CV does not change the decision — it is context for reading it.</p>
-  <p><b>Resting HR</b> is shown for context only; this method decides on HRV alone.</p>
-  {% endif %}
-  {% endif %}
-  <p class="muted">{{ t("Proof of concept. Not medical advice.") }}</p>
-</details>
+{% include "_how_to_read.html" %}
 
 <div class="card" id="sources">
   <h3 style="margin-top:0">{{ t("Sources") }}</h3>

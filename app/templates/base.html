@@ -57,6 +57,23 @@
                         background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px; box-shadow:0 6px 20px rgba(0,0,0,.12); }
   details.menu > div a { padding:7px 10px; border-radius:6px; text-decoration:none; color:var(--text); font-weight:400; }
   details.menu > div a:hover { background:var(--bg); }
+  .guide summary { cursor:pointer; font-weight:600; }
+  .guide[open] summary { margin-bottom:12px; }
+  .guide { line-height:1.6; }
+  .guide .lead { font-size:16px; margin-top:0; }
+  .guide h4 { margin:22px 0 8px; font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  .guide ul { margin:0; padding-left:20px; } .guide li { margin-bottom:6px; }
+  .guide .small { font-size:13px; margin-top:22px; }
+  .weights { display:flex; flex-wrap:wrap; gap:10px; margin:8px 0; }
+  .weights div { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 14px; }
+  .weights b { font-size:20px; display:block; } .weights span { color:var(--muted); font-size:13px; }
+  .levels { display:flex; flex-direction:column; gap:8px; }
+  .level { display:grid; grid-template-columns:18px 110px 1fr; gap:8px; align-items:baseline; padding:8px 10px;
+           background:var(--bg); border-radius:8px; }
+  .warnings { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px; }
+  .warnings div { border-left:3px solid var(--amber); background:var(--bg); padding:10px 12px; border-radius:0 8px 8px 0; }
+  .warnings b { display:block; margin-bottom:2px; }
+  @media (max-width:560px) { .level { grid-template-columns:18px 1fr; } .level > span:last-child { grid-column:2; } }
   .info { display:inline-grid; place-items:center; width:15px; height:15px; margin-left:4px; border-radius:50%;
           border:1px solid currentColor; font:700 10px/1 system-ui; cursor:help; vertical-align:1px; opacity:.7;
           text-transform:none; letter-spacing:0; }
