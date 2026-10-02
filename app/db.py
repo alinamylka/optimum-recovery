@@ -122,6 +122,40 @@ def login(username: str) -> sqlite3.Row | None:
         return conn.execute("SELECT * FROM login WHERE username = ?", (username,)).fetchone()
 
 
+def login_by_email(email: str) -> sqlite3.Row | None:
+    """The login whose own address, or whose athlete profile's address, is this one."""
+    with connect() as conn:
+        return conn.execute(
+            """
+            SELECT l.* FROM login l LEFT JOIN athlete a ON a.login = l.username
+            WHERE lower(l.email) = lower(?) OR lower(a.email) = lower(?)
+            ORDER BY lower(l.email) = lower(?) DESC LIMIT 1
+            """,
+            (email, email, email),
+        ).fetchone()
+
+
+def email_of(username: str) -> str | None:
+    """Where mail for a login goes: its own address, else the one on its athlete profile."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT coalesce(l.email, a.email) AS email FROM login l LEFT JOIN athlete a ON a.login = l.username "
+            "WHERE l.username = ?",
+            (username,),
+        ).fetchone()
+    return row["email"] if row else None
+
+
+def rename_login(old: str, new: str) -> None:
+    """The login name is the key everywhere, so every table that mentions it follows."""
+    with connect() as conn:
+        conn.execute("UPDATE login SET username = ? WHERE username = ?", (new, old))
+        conn.execute("UPDATE athlete SET owner = ? WHERE owner = ?", (new, old))
+        conn.execute("UPDATE athlete SET login = ? WHERE login = ?", (new, old))
+        conn.execute("UPDATE share SET username = ? WHERE username = ?", (new, old))
+        conn.execute("UPDATE mail_log SET username = ? WHERE username = ?", (new, old))
+
+
 def logins() -> list[sqlite3.Row]:
     with connect() as conn:
         return conn.execute(

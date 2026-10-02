@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+import re
 import secrets
 import time
 from dataclasses import dataclass
@@ -21,6 +22,10 @@ ITERATIONS = 200_000
 security = HTTPBasic(auto_error=False)
 COOKIE = "session"
 SESSION_DAYS = 30
+RESET_HOURS = 2
+INVITE_HOURS = 7 * 24
+USERNAME = re.compile(r"^[a-z0-9._-]{2,40}$")
+MIN_PASSWORD = 8
 
 
 class NotSignedIn(Exception):
@@ -59,8 +64,8 @@ def new_password() -> str:
 
 
 def check_password(username: str, password: str):
-    """The login row when the password is right, else None."""
-    row = db.login(username)
+    """The login row when the password is right, else None. The name may also be the email address."""
+    row = find(username) if "@" in username else db.login(username)
     if row is None or not _matches(row["password_hash"], password):
         return None
     return row
@@ -78,20 +83,20 @@ def _key() -> bytes:
         return bytes.fromhex(f.read().strip())
 
 
-def _sign(username: str, expires: int, password_hash: str) -> str:
-    # The password hash is part of the message, so changing a password ends its sessions.
-    message = f"{username}|{expires}|{password_hash}".encode()
+def _sign(purpose: str, username: str, expires: int, password_hash: str) -> str:
+    # The password hash is part of the message, so changing a password ends its sessions
+    # and makes a reset link work only once.
+    message = f"{purpose}|{username}|{expires}|{password_hash}".encode()
     return hmac.new(_key(), message, hashlib.sha256).hexdigest()
 
 
-def session_cookie(row) -> tuple[str, int]:
-    """The cookie value for a signed-in login and its lifetime in seconds."""
-    max_age = SESSION_DAYS * 86400
-    expires = int(time.time()) + max_age
-    return f"{row['username']}|{expires}|{_sign(row['username'], expires, row['password_hash'])}", max_age
+def _token(purpose: str, row, seconds: int) -> str:
+    expires = int(time.time()) + seconds
+    return f"{row['username']}|{expires}|{_sign(purpose, row['username'], expires, row['password_hash'])}"
 
 
-def _from_cookie(value: str | None):
+def _check(purpose: str, value: str | None):
+    """The login a token was made for, if it is genuine, unexpired and its password unchanged."""
     try:
         username, expires, signature = (value or "").rsplit("|", 2)
         expires = int(expires)
@@ -100,9 +105,45 @@ def _from_cookie(value: str | None):
     row = db.login(username)
     if row is None or expires < time.time():
         return None
-    if not hmac.compare_digest(signature, _sign(username, expires, row["password_hash"])):
+    if not hmac.compare_digest(signature, _sign(purpose, username, expires, row["password_hash"])):
         return None
     return row
+
+
+def session_cookie(row) -> tuple[str, int]:
+    """The cookie value for a signed-in login and its lifetime in seconds."""
+    max_age = SESSION_DAYS * 86400
+    return _token("session", row, max_age), max_age
+
+
+def reset_token(row, hours: int = RESET_HOURS) -> str:
+    return _token("reset", row, hours * 3600)
+
+
+def from_reset_token(token: str | None):
+    return _check("reset", token)
+
+
+def find(name_or_email: str):
+    """A login by its name or, with an @, by its email address."""
+    value = name_or_email.strip()
+    return db.login_by_email(value) if "@" in value else db.login(value.lower())
+
+
+def password_problem(password: str, again: str) -> str | None:
+    if len(password) < MIN_PASSWORD:
+        return f"The password needs at least {MIN_PASSWORD} characters."
+    if password != again:
+        return "The two passwords differ."
+    return None
+
+
+def username_problem(username: str) -> str | None:
+    if not USERNAME.match(username):
+        return "A login is 2–40 lowercase letters, digits, dots, dashes or underscores."
+    if db.login(username):
+        return f"The login {username} is taken."
+    return None
 
 
 def current(request: Request, credentials: HTTPBasicCredentials | None = Depends(security)) -> Login:
@@ -111,7 +152,7 @@ def current(request: Request, credentials: HTTPBasicCredentials | None = Depends
         if row is None:
             raise HTTPException(401, headers={"WWW-Authenticate": "Basic"})
     else:
-        row = _from_cookie(request.cookies.get(COOKIE))
+        row = _check("session", request.cookies.get(COOKIE))
         if row is None:
             raise NotSignedIn()
     profile = db.own_profile(row["username"])

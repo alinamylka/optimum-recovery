@@ -59,7 +59,7 @@ def login_page(request: Request, next: str | None = None):
 
 @app.post("/login", response_class=HTMLResponse)
 def login(request: Request, username: str = Form(...), password: str = Form(...), next: str = Form("/")):
-    row = auth.check_password(username.strip(), password)
+    row = auth.check_password(username.strip().lower(), password)
     if row is None:
         return templates.TemplateResponse(
             request,
@@ -67,13 +67,73 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
             {"me": None, "next": _safe_next(next), "username": username, "error": "Wrong login or password."},
             status_code=401,
         )
+    return _signed_in(RedirectResponse(_safe_next(next), status_code=303), row)
+
+
+def _signed_in(response, row):
+    """Gives the browser a fresh session cookie for this login."""
     value, max_age = auth.session_cookie(row)
-    response = RedirectResponse(_safe_next(next), status_code=303)
     response.set_cookie(
         auth.COOKIE, value, max_age=max_age, httponly=True, samesite="lax",
         secure=os.environ.get("PUBLIC_URL", "").startswith("https://"),
     )
     return response
+
+
+@app.get("/forgot", response_class=HTMLResponse)
+def forgot_page(request: Request):
+    return templates.TemplateResponse(request, "forgot.html", {"me": None, "configured": mailer.configured()})
+
+
+@app.post("/forgot", response_class=HTMLResponse)
+def forgot(request: Request, who: str = Form(...)):
+    """
+    Mails a link for setting a new password. The answer is the same whether or not
+    the login exists, so the page can't be used to find out who has an account.
+    """
+    row = auth.find(who)
+    email = row and db.email_of(row["username"])
+    if email and mailer.configured():
+        try:
+            _mail_link("reset", row, email, request)
+        except Exception as e:
+            print(f"Password reset mail to {row['username']} failed: {e}", flush=True)
+    return templates.TemplateResponse(
+        request, "forgot.html", {"me": None, "configured": mailer.configured(), "sent": True}
+    )
+
+
+def _mail_link(kind: str, row, email: str, request: Request, inviter: str = "") -> None:
+    """Mails a link for setting the password: a reset, or an invitation to a new account."""
+    hours = auth.INVITE_HOURS if kind == "invite" else auth.RESET_HOURS
+    base = mailer.public_url() or str(request.base_url).rstrip("/")
+    link = f"{base}/reset?token={auth.reset_token(row, hours)}"
+    mailer.send(email, *mailer.account_mail(kind, row["username"], link, hours, row["language"] or "pl", inviter))
+
+
+@app.get("/reset", response_class=HTMLResponse)
+def reset_page(request: Request, token: str = ""):
+    row = auth.from_reset_token(token)
+    return templates.TemplateResponse(
+        request, "reset.html", {"me": None, "token": token, "row": row}, status_code=200 if row else 400
+    )
+
+
+@app.post("/reset", response_class=HTMLResponse)
+def reset(
+    request: Request, token: str = Form(""), password: str = Form(...), again: str = Form(...), email: str = Form("")
+):
+    row = auth.from_reset_token(token)
+    problem = None if row else "This link has expired or was already used."
+    problem = problem or auth.password_problem(password, again)
+    if problem:
+        return templates.TemplateResponse(
+            request, "reset.html", {"me": None, "token": token, "row": row, "error": problem}, status_code=400
+        )
+    db.update_login(row["username"], password_hash=auth.hash_password(password))
+    if email.strip() and not row["email"]:
+        db.set_mail(row["username"], email.strip(), True)
+    return _signed_in(RedirectResponse("/", status_code=303), db.login(row["username"]))
 
 
 @app.post("/logout")
@@ -219,18 +279,36 @@ def account(
     me: Login = Depends(auth.current),
     existing: str = Form(""),
     new_username: str = Form(""),
+    email: str = Form(""),
 ):
-    """Links the profile to a login, or creates one so the athlete can sign in and see their own data."""
+    """
+    Links the profile to a login, or creates one so the athlete can sign in and see
+    their own data. With an email address the athlete gets an invitation to set
+    their own password; without, the coach gets a generated one to pass on.
+    """
     a = _manageable(me, athlete_id, coach_only=True)
     notice = None
     username = new_username.strip().lower()
+    email = email.strip() or (a["email"] or "")
     if username:
-        if ":" in username or db.login(username):
-            raise HTTPException(400, f"Login {username} is not available")
-        password = auth.new_password()
-        db.add_login(username, auth.hash_password(password), "athlete")
+        problem = auth.username_problem(username)
+        if problem:
+            return _athlete_page(request, me, a, None, error=problem, status=400)
+        # Nobody knows this password: the athlete sets their own through the sign-up link.
+        db.add_login(username, auth.hash_password(auth.new_password()), "athlete")
         db.link_login(a["id"], username)
-        notice = f"Created login {username} for {a['name']}. Password: {password}"
+        db.set_language(username, a["language"] or "pl")
+        if email:
+            # The athlete's Monday email now goes to their login, in the profile's language.
+            db.set_mail(username, email, bool(a["weekly_mail"]))
+        notice = f"Created login {username} for {a['name']}."
+        if email and mailer.configured():
+            try:
+                _mail_link("invite", db.login(username), email, request, inviter=_names()[me.username])
+                notice += f" The sign-up link also went to {email}."
+            except Exception as e:
+                notice += f" Mailing the sign-up link to {email} failed: {e}"
+        return _athlete_page(request, me, db.athlete_by_id(a["id"]), None, notice, link=_signup_link(username, request))
     elif existing == "-":
         db.link_login(a["id"], None)
     elif existing and db.login(existing):
@@ -240,9 +318,23 @@ def account(
     return _athlete_page(request, me, db.athlete_by_id(a["id"]), None, notice)
 
 
+@app.post("/athletes/{athlete_id}/account/link", response_class=HTMLResponse)
+def new_signup_link(request: Request, athlete_id: int, me: Login = Depends(auth.current)):
+    """A fresh link for an athlete who lost theirs or forgot the password."""
+    a = _manageable(me, athlete_id, coach_only=True)
+    if not a["login"]:
+        raise HTTPException(404)
+    return _athlete_page(request, me, a, None, link=_signup_link(a["login"], request))
+
+
+def _signup_link(username: str, request: Request) -> str:
+    base = mailer.public_url() or str(request.base_url).rstrip("/")
+    return f"{base}/reset?token={auth.reset_token(db.login(username), auth.INVITE_HOURS)}"
+
+
 def _athlete_page(
     request: Request, me: Login, a, model: str | None, notice: str | None = None, error: str | None = None,
-    status: int = 200,
+    status: int = 200, link: str | None = None,
 ):
     is_coach = me.admin or a["owner"] == me.username
     is_self = a["login"] == me.username
@@ -278,6 +370,7 @@ def _athlete_page(
             "coaches": [u["username"] for u in logins if u["role"] != "athlete"] if me.admin else [],
             "free_logins": [u["username"] for u in logins if u["profile_id"] is None],
             "languages": describe.LANGUAGES,
+            "link": link,
         },
         status_code=status,
     )
@@ -351,6 +444,36 @@ def save_account(
     return RedirectResponse("/account", status_code=303)
 
 
+@app.post("/account/password", response_class=HTMLResponse)
+def change_password(
+    request: Request,
+    me: Login = Depends(auth.current),
+    current: str = Form(...),
+    password: str = Form(...),
+    again: str = Form(...),
+):
+    if auth.check_password(me.username, current) is None:
+        return account_page(request, me, error="The current password is wrong.")
+    problem = auth.password_problem(password, again)
+    if problem:
+        return account_page(request, me, error=problem)
+    db.update_login(me.username, password_hash=auth.hash_password(password))
+    # The new hash ends every other session; this browser gets a new cookie.
+    return _signed_in(account_page(request, me, notice="Password changed."), db.login(me.username))
+
+
+@app.post("/account/username", response_class=HTMLResponse)
+def change_username(request: Request, me: Login = Depends(auth.current), username: str = Form(...)):
+    username = username.strip().lower()
+    if username == me.username:
+        return RedirectResponse("/account", status_code=303)
+    problem = auth.username_problem(username)
+    if problem:
+        return account_page(request, me, error=problem)
+    db.rename_login(me.username, username)
+    return _signed_in(RedirectResponse("/account", status_code=303), db.login(username))
+
+
 @app.get("/account/preview", response_class=HTMLResponse)
 def preview_mail(me: Login = Depends(auth.current)):
     built = mailer.report(me.username, me.role, language=me.language)
@@ -417,6 +540,21 @@ def reset_password(request: Request, username: str, me: Login = Depends(auth.adm
     return _users_page(request, me, f"New password for {username}: {password}")
 
 
+@app.post("/users/{username}/rename", response_class=HTMLResponse)
+def rename_user(request: Request, username: str, me: Login = Depends(auth.admin), new: str = Form(...)):
+    new = new.strip().lower()
+    if not db.login(username):
+        raise HTTPException(404)
+    if new == username:
+        return RedirectResponse("/users", status_code=303)
+    problem = auth.username_problem(new)
+    if problem:
+        return _users_page(request, me, None, error=problem)
+    db.rename_login(username, new)
+    response = RedirectResponse("/users", status_code=303)
+    return _signed_in(response, db.login(new)) if username == me.username else response
+
+
 @app.post("/users/{username}/role")
 def change_role(username: str, me: Login = Depends(auth.admin), role: str = Form(...)):
     # An admin can't demote themselves: there would be nobody left to undo it.
@@ -438,11 +576,14 @@ async def not_found(request: Request, exc):
     return templates.TemplateResponse(request, "not_found.html", {}, status_code=404)
 
 
-def _users_page(request: Request, me: Login, notice: str):
+def _users_page(request: Request, me: Login, notice: str | None, error: str | None = None):
     return templates.TemplateResponse(
         request,
         "users.html",
-        {"me": me, "users": db.logins(), "roles": auth.ROLES, "notice": notice, "languages": describe.LANGUAGES},
+        {
+            "me": me, "users": db.logins(), "roles": auth.ROLES, "notice": notice, "error": error,
+            "languages": describe.LANGUAGES,
+        },
     )
 
 

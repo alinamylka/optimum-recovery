@@ -8,13 +8,20 @@
   <div class="muted">Copy it now — it is stored only as a hash and can't be shown again. Send it to the person yourself.</div>
 </div>
 {% endif %}
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
 
 <div class="card scroll">
   <table>
     <tr><th>Login</th><th>Role</th><th>Email (Monday report)</th><th>Own profile</th><th>Coaches</th><th>Shared with them</th><th>Since</th><th></th></tr>
     {% for u in users %}
     <tr>
-      <td><b>{{ u.username }}</b>{% if u.username == me.username %} <span class="muted">(you)</span>{% endif %}</td>
+      <td>
+        <form method="post" action="/users/{{ u.username }}/rename" class="row" style="flex-wrap:nowrap">
+          <input name="new" value="{{ u.username }}" required pattern="[A-Za-z0-9._-]+" style="width:110px;font-weight:600"
+                 title="Change the login and press Enter">
+          {% if u.username == me.username %}<span class="muted">(you)</span>{% endif %}
+        </form>
+      </td>
       <td>
         {% if u.username == me.username %}{{ u.role }}{% else %}
         <form method="post" action="/users/{{ u.username }}/role" class="row">

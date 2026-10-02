@@ -6,7 +6,7 @@
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
   <form method="post" action="/login" style="display:flex;flex-direction:column;gap:12px">
     <input type="hidden" name="next" value="{{ next }}">
-    <label>Login<br>
+    <label>Login or email<br>
       <input name="username" value="{{ username or '' }}" autocomplete="username" autocapitalize="none"
              autocorrect="off" spellcheck="false" required {{ '' if username else 'autofocus' }} style="width:100%">
     </label>
@@ -20,5 +20,6 @@
     </label>
     <button type="submit">Sign in</button>
   </form>
+  <p style="margin-bottom:0"><a href="/forgot">Forgot your password?</a></p>
 </div>
 {% endblock %}

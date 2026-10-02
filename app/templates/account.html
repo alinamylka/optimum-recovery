@@ -6,6 +6,25 @@
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 
 <div class="card">
+  <h3 style="margin-top:0">Login</h3>
+  <form class="row" method="post" action="/account/username">
+    <input name="username" value="{{ me.username }}" required pattern="[A-Za-z0-9._-]+" autocapitalize="none">
+    <button>Change login</button>
+  </form>
+  <p class="muted" style="margin-bottom:0">You can also sign in with your email address{% if row.email %} ({{ row.email }}){% endif %}.</p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Password</h3>
+  <form class="row" method="post" action="/account/password">
+    <input name="current" type="password" placeholder="Current password" autocomplete="current-password" required>
+    <input name="password" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" minlength="8" required>
+    <input name="again" type="password" placeholder="New password again" autocomplete="new-password" minlength="8" required>
+    <button>Change password</button>
+  </form>
+</div>
+
+<div class="card">
   <h3 style="margin-top:0">Monday email</h3>
   <p class="muted">Every Monday morning: each of your athletes' signal for today and a written summary of the week that just ended — to plan the new week.</p>
   <form class="row" method="post" action="/account">

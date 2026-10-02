@@ -64,3 +64,81 @@ def test_athlete_name_from_intervals(tmp_path, monkeypatch):
         assert r.status_code == 303
         assert "levisek" in c.get(r.headers["location"]).text
         assert c.post("/athletes", data={"name": " "}).status_code == 400
+
+
+def _sign_in(c, username="alina", password="s3cret"):
+    c.post("/login", data={"username": username, "password": password})
+
+
+def _link(html):
+    import re
+
+    return re.search(r'value="https?://[^"]*?(/reset\?token=[^"]+)"', html).group(1).replace("&amp;", "&")
+
+
+def test_coach_invites_athlete_with_signup_link(tmp_path, monkeypatch):
+    from app import db, mailer
+
+    sent = []
+    monkeypatch.setattr(mailer, "configured", lambda: True)
+    monkeypatch.setattr(mailer, "send", lambda to, subject, html, text: sent.append((to, text)))
+    test_client = client(tmp_path, monkeypatch)
+    monkeypatch.setenv("USERS", "alina:s3cret,arek:c0achpass")
+    with test_client as c:
+        athlete = db.add_athlete("arek", "levisek", None, None)
+        _sign_in(c, "arek", "c0achpass")
+        r = c.post(f"/athletes/{athlete}/account", data={"new_username": "Levi", "email": "levi@example.com"})
+        assert "levi@example.com" in r.text and sent[0][0] == "levi@example.com"
+        link = _link(r.text)
+        assert link in sent[0][1]
+
+        c.cookies.clear()
+        assert "Your login: <b>levi</b>" in c.get(link).text
+        r = c.post("/reset", data={"token": link.split("=", 1)[1], "password": "athlete-pw", "again": "athlete-pw"}, follow_redirects=False)
+        assert r.status_code == 303
+        assert c.get("/account").status_code == 200
+        # The link works once: the password it was made for is gone.
+        assert c.get(link).status_code == 400
+        assert db.login("levi")["email"] == "levi@example.com"
+
+
+def test_forgot_password_by_email_and_sign_in_with_email(tmp_path, monkeypatch):
+    from app import db, mailer
+
+    sent = []
+    monkeypatch.setattr(mailer, "configured", lambda: True)
+    monkeypatch.setattr(mailer, "send", lambda to, subject, html, text: sent.append(text))
+    with client(tmp_path, monkeypatch) as c:
+        db.set_mail("alina", "alina@example.com", True)
+        assert "on its way" in c.post("/forgot", data={"who": "nobody@example.com"}).text and not sent
+        c.post("/forgot", data={"who": "Alina@example.com"})
+        token = sent[0].split("token=")[1].split()[0]
+        assert c.post("/reset", data={"token": token, "password": "short", "again": "short"}).status_code == 400
+        c.post("/reset", data={"token": token, "password": "brand-new-pw", "again": "brand-new-pw"})
+        c.cookies.clear()
+        r = c.post("/login", data={"username": "alina@example.com", "password": "brand-new-pw"}, follow_redirects=False)
+        assert r.status_code == 303
+
+
+def test_rename_follows_everywhere_and_keeps_session(tmp_path, monkeypatch):
+    from app import db
+
+    with client(tmp_path, monkeypatch) as c:
+        athlete = db.add_athlete("alina", "Alina", None, None)
+        db.link_login(athlete, "alina")
+        _sign_in(c)
+        c.post("/account/username", data={"username": "Ala"})
+        assert c.get("/account", follow_redirects=False).status_code == 200
+        assert db.login("alina") is None and db.athlete_by_id(athlete)["owner"] == "ala"
+        assert db.own_profile("ala")["id"] == athlete
+
+
+def test_change_password_needs_current(tmp_path, monkeypatch):
+    with client(tmp_path, monkeypatch) as c:
+        _sign_in(c)
+        r = c.post("/account/password", data={"current": "nope", "password": "longenough", "again": "longenough"})
+        assert "current password is wrong" in r.text
+        c.post("/account/password", data={"current": "s3cret", "password": "longenough", "again": "longenough"})
+        assert c.get("/account", follow_redirects=False).status_code == 200
+        c.cookies.clear()
+        assert c.post("/login", data={"username": "alina", "password": "longenough"}, follow_redirects=False).status_code == 303

@@ -106,19 +106,32 @@
 {% if mine %}
 <div class="card">
   <h3 style="margin-top:0">Athlete's account</h3>
+  {% if link %}
+  <p>Send them this sign-up link (WhatsApp, SMS…). It works for 7 days, until they set a password:</p>
+  <p class="row" style="display:flex;gap:6px">
+    <input id="signup-link" value="{{ link }}" readonly style="flex:1;min-width:0" onclick="this.select()">
+    <button type="button" class="plain" onclick="navigator.clipboard.writeText(document.getElementById('signup-link').value); this.textContent='Copied'">Copy</button>
+  </p>
+  {% endif %}
   {% if athlete.login %}
-  <p>Signs in as <b>{{ athlete.login }}</b> and can see this page and set up their own data source.</p>
-  <form method="post" action="/athletes/{{ athlete.id }}/account" class="row">
-    <input type="hidden" name="existing" value="-"><button class="plain">Unlink account</button>
-  </form>
+  <p>Signs in as <b>{{ athlete.login }}</b> and can see this page, set up their own data source and their Monday email.</p>
+  <div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
+    <form method="post" action="/athletes/{{ athlete.id }}/account/link"><button class="plain">New sign-up link</button></form>
+    <form method="post" action="/athletes/{{ athlete.id }}/account">
+      <input type="hidden" name="existing" value="-"><button class="plain">Unlink account</button>
+    </form>
+  </div>
   {% else %}
-  <p class="muted">No account — you manage this athlete's data. Give them a login if they should see it themselves.</p>
+  <p class="muted">No account — you manage this athlete's data. Invite them if they should see it themselves.</p>
   <form method="post" action="/athletes/{{ athlete.id }}/account" class="row">
-    <input name="new_username" placeholder="New login (password is generated)" pattern="[A-Za-z0-9._-]+">
-    <button>Create login</button>
+    <input name="new_username" placeholder="Login for them" pattern="[A-Za-z0-9._-]+" required autocapitalize="none">
+    <input name="email" type="email" value="{{ athlete.email or '' }}" placeholder="Their email (optional)" style="min-width:220px">
+    <button>Invite</button>
   </form>
+  <p class="muted" style="margin:6px 0 0">You get a sign-up link to send them; with an email they also get it by mail.
+     They choose their own password and can change login and email later.</p>
   {% if free_logins %}
-  <form method="post" action="/athletes/{{ athlete.id }}/account" class="row" style="margin-top:8px">
+  <form method="post" action="/athletes/{{ athlete.id }}/account" class="row" style="margin-top:12px">
     <select name="existing">{% for u in free_logins %}<option>{{ u }}</option>{% endfor %}</select>
     <button class="plain">Link existing login</button>
   </form>

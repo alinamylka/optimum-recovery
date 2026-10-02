@@ -113,6 +113,37 @@ def report_on(athletes: list, recipient: str, today: datetime | None = None, lan
     return subject, html, text
 
 
+ACCOUNT_MAIL = {
+    "invite": {
+        "pl": ("Twoje konto w Optimum Recovery",
+               "{inviter} założył(a) Ci konto w Optimum Recovery: codzienny sygnał regeneracji z Twoich danych HRV i tętna spoczynkowego.",
+               "Twój login: {username}. Ustaw hasło tutaj (link działa {hours} h):", "Ustaw hasło"),
+        "en": ("Your Optimum Recovery account",
+               "{inviter} set up an Optimum Recovery account for you: a daily recovery signal from your HRV and resting heart rate.",
+               "Your login: {username}. Set your password here (the link works for {hours} h):", "Set password"),
+    },
+    "reset": {
+        "pl": ("Nowe hasło do Optimum Recovery",
+               "Ktoś (pewnie Ty) poprosił o nowe hasło do konta {username}. Jeśli to nie Ty, zignoruj tę wiadomość.",
+               "Ustaw nowe hasło tutaj (link działa {hours} h):", "Ustaw nowe hasło"),
+        "en": ("New password for Optimum Recovery",
+               "Someone (probably you) asked for a new password for {username}. If it wasn't you, ignore this email.",
+               "Set a new password here (the link works for {hours} h):", "Set new password"),
+    },
+}
+
+
+def account_mail(kind: str, username: str, link: str, hours: int, language: str = "pl", inviter: str = "") -> tuple[str, str, str]:
+    """Subject, HTML and text of an invitation or a password reset, each with a link to set the password."""
+    subject, intro, ask, button = (
+        line.format(username=username, hours=hours, inviter=inviter)
+        for line in ACCOUNT_MAIL[kind].get(language, ACCOUNT_MAIL[kind]["pl"])
+    )
+    text = f"{intro}\n\n{ask}\n{link}\n"
+    html = templates.get_template("account_mail.html").render(intro=intro, ask=ask, button=button, link=link)
+    return subject, html, text
+
+
 def send(to: str, subject: str, html: str, text: str) -> None:
     message = EmailMessage()
     message["Subject"] = subject
