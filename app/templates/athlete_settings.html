@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Settings · {{ athlete.name }} · Optimum Recovery{% endblock %}
+{% block body %}
+{% include "_athlete_header.html" %}
+
+<div class="card">
+  <h3 style="margin-top:0">Data source</h3>
+  <form method="post" action="/athletes/{{ athlete.id }}/settings" class="row">
+    <input name="name" value="{{ athlete.name }}" placeholder="Name" required>
+    <input name="intervals_id" value="{{ athlete.intervals_id or '' }}" placeholder="intervals.icu athlete id">
+    <input name="api_key" type="password" placeholder="{{ 'API key saved — type to replace' if athlete.api_key else 'intervals.icu API key' }}">
+    {% if athlete.api_key %}<label class="muted"><input type="checkbox" name="remove_key" value="1"> remove key</label>{% endif %}
+    <button>Save</button>
+  </form>
+  <p class="muted" style="margin-bottom:0">
+    intervals.icu: Settings → Developer Settings → API key. The athlete id looks like <code>i123456</code>;
+    leave it empty when the key is the athlete's own. A coach's key works for athletes who share their intervals.icu account with that coach.
+    Use one device per athlete — mixing Oura, Garmin and WHOOP breaks the HRV baseline.
+  </p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Data</h3>
+  {% if athlete.api_key %}
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/sync">
+    <button>Sync intervals.icu</button>
+    <span class="muted">last sync {{ athlete.synced_at or "never" }}</span>
+  </form>
+  <br>
+  {% endif %}
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/upload" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".zip,.csv" required>
+    <button>Upload export</button>
+  </form>
+  <p class="muted">
+    <b>TrainingPeaks</b>: Athlete Account Settings → Account → Export Data → <b>Custom Metrics</b> (not Workout Files). Upload the zip as it is.<br>
+    <b>Oura</b>: data export from the Oura account — upload the <code>…_trends.csv</code> (or the zip it came in).
+    Uploading again adds new days and updates existing ones.
+  </p>
+  {% if mine %}
+  <form method="post" action="/athletes/{{ athlete.id }}/delete" onsubmit="return confirm('Delete {{ athlete.name }} and all data?')">
+    <button class="plain">Delete athlete</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if mine %}
+<div class="card">
+  <h3 style="margin-top:0">Athlete's account</h3>
+  {% if link %}
+  <p>Send them this sign-up link (WhatsApp, SMS…). It works for 7 days, until they set a password:</p>
+  <p class="row" style="display:flex;gap:6px">
+    <input id="signup-link" value="{{ link }}" readonly style="flex:1;min-width:0" onclick="this.select()">
+    <button type="button" class="plain" onclick="navigator.clipboard.writeText(document.getElementById('signup-link').value); this.textContent='Copied'">Copy</button>
+  </p>
+  {% endif %}
+  {% if athlete.login %}
+  <p>Signs in as <b>{{ athlete.login }}</b> and can see this page, set up their own data source and their Monday email.</p>
+  <div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
+    <form method="post" action="/athletes/{{ athlete.id }}/account/link"><button class="plain">New sign-up link</button></form>
+    <form method="post" action="/athletes/{{ athlete.id }}/account">
+      <input type="hidden" name="existing" value="-"><button class="plain">Unlink account</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="muted">No account — you manage this athlete's data. Invite them if they should see it themselves.</p>
+  <form method="post" action="/athletes/{{ athlete.id }}/account" class="row">
+    <input name="new_username" placeholder="Login for them" pattern="[A-Za-z0-9._-]+" required autocapitalize="none">
+    <input name="email" type="email" value="{{ athlete.email or '' }}" placeholder="Their email (optional)" style="min-width:220px">
+    <button>Invite</button>
+  </form>
+  <p class="muted" style="margin:6px 0 0">You get a sign-up link to send them; with an email they also get it by mail.
+     They choose their own password and can change login and email later.</p>
+  {% if free_logins %}
+  <form method="post" action="/athletes/{{ athlete.id }}/account" class="row" style="margin-top:12px">
+    <select name="existing">{% for u in free_logins %}<option>{{ u }}</option>{% endfor %}</select>
+    <button class="plain">Link existing login</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</div>
+{% endif %}
+
+{% if mine %}
+<div class="card">
+  <h3 style="margin-top:0">Monday email for the athlete</h3>
+  {% if athlete.login %}
+  <p class="muted" style="margin-bottom:0">{{ athlete.login }} has an account: they set their email and language themselves under Account.</p>
+  {% else %}
+  <p class="muted">Every Monday the athlete gets their own signal and a written summary of their week.</p>
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/mail">
+    <input name="email" type="email" value="{{ athlete.email or '' }}" placeholder="athlete@example.com" style="min-width:230px">
+    <select name="language">{% for code, name in languages.items() %}<option value="{{ code }}" {{ 'selected' if athlete.language == code }}>{{ name }}</option>{% endfor %}</select>
+    <label><input type="checkbox" name="weekly" value="1" {{ 'checked' if athlete.weekly_mail }}> send</label>
+    <button>Save</button>
+  </form>
+  {% if athlete.email %}
+  <form method="post" action="/athletes/{{ athlete.id }}/mail/preview" target="_blank" style="margin-top:8px">
+    <button class="plain">Preview the athlete's email</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</div>
+{% endif %}
+
+{% if me.admin %}
+<div class="card">
+  <h3 style="margin-top:0">Coach</h3>
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/owner">
+    <select name="owner">{% for u in coaches %}<option {{ 'selected' if u == athlete.owner }}>{{ u }}</option>{% endfor %}</select>
+    <button>Move to this coach</button>
+  </form>
+  <p class="muted" style="margin-bottom:0">The athlete, all data and the intervals.icu connection move to that login.</p>
+</div>
+{% endif %}
+
+{% if mine %}
+<div class="card">
+  <h3 style="margin-top:0">Sharing</h3>
+  <p class="muted">People you share with can see the charts, but can't change data, see the API key or delete the athlete.</p>
+  {% for u in shares %}
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/unshare" style="margin-bottom:6px">
+    <input type="hidden" name="username" value="{{ u }}"><span>{{ u }}</span><button class="plain">Stop sharing</button>
+  </form>
+  {% endfor %}
+  {% if share_candidates %}
+  <form class="row" method="post" action="/athletes/{{ athlete.id }}/share">
+    <select name="username">{% for u in share_candidates %}<option>{{ u }}</option>{% endfor %}</select>
+    <button>Share</button>
+  </form>
+  {% elif not shares %}<p class="muted">No other logins yet.</p>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

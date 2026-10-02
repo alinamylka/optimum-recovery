@@ -248,7 +248,7 @@ async def upload(request: Request, athlete_id: int, me: Login = Depends(auth.cur
         frame = parse_export(await file.read())
     except Exception as e:  # a wrong file should say what is wrong with it, on the page
         problem = f"{file.filename} could not be imported: {e or type(e).__name__}"
-        return _athlete_page(request, me, a, None, error=problem, status=400)
+        return _athlete_page(request, me, a, None, error=problem, status=400, view="settings")
     db.save_metrics(a["id"], frame)
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
 
@@ -269,6 +269,12 @@ def delete(athlete_id: int, me: Login = Depends(auth.current)):
 @app.get("/athletes/{athlete_id}", response_class=HTMLResponse)
 def dashboard(request: Request, athlete_id: int, model: str | None = None, me: Login = Depends(auth.current)):
     return _athlete_page(request, me, _visible(me, athlete_id), model)
+
+
+@app.get("/athletes/{athlete_id}/settings", response_class=HTMLResponse)
+def settings_page(request: Request, athlete_id: int, me: Login = Depends(auth.current)):
+    """Data source, data, account, email and sharing, apart from the dashboard."""
+    return _athlete_page(request, me, _manageable(me, athlete_id), None, view="settings")
 
 
 @app.post("/athletes/{athlete_id}/settings")
@@ -299,7 +305,7 @@ def athlete_mail(
     """Monday email for an athlete without an account, set up by their coach."""
     a = _manageable(me, athlete_id, coach_only=True)
     db.set_athlete_mail(a["id"], email.strip(), language if language in describe.LANGUAGES else "pl", bool(weekly))
-    return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+    return RedirectResponse(f"/athletes/{athlete_id}/settings", status_code=303)
 
 
 @app.post("/athletes/{athlete_id}/mail/preview", response_class=HTMLResponse)
@@ -330,7 +336,7 @@ def account(
     if username:
         problem = auth.username_problem(username)
         if problem:
-            return _athlete_page(request, me, a, None, error=problem, status=400)
+            return _athlete_page(request, me, a, None, error=problem, status=400, view="settings")
         # Nobody knows this password: the athlete sets their own through the sign-up link.
         db.add_login(username, auth.hash_password(auth.new_password()), "athlete")
         db.link_login(a["id"], username)
@@ -345,14 +351,16 @@ def account(
                 notice += f" The sign-up link also went to {email}."
             except Exception as e:
                 notice += f" Mailing the sign-up link to {email} failed: {e}"
-        return _athlete_page(request, me, db.athlete_by_id(a["id"]), None, notice, link=_signup_link(username, request))
+        return _athlete_page(
+            request, me, db.athlete_by_id(a["id"]), None, notice, link=_signup_link(username, request), view="settings"
+        )
     elif existing == "-":
         db.link_login(a["id"], None)
     elif existing and db.login(existing):
         db.link_login(a["id"], existing)
     if notice is None:
-        return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
-    return _athlete_page(request, me, db.athlete_by_id(a["id"]), None, notice)
+        return RedirectResponse(f"/athletes/{athlete_id}/settings", status_code=303)
+    return _athlete_page(request, me, db.athlete_by_id(a["id"]), None, notice, view="settings")
 
 
 @app.post("/athletes/{athlete_id}/account/link", response_class=HTMLResponse)
@@ -361,7 +369,7 @@ def new_signup_link(request: Request, athlete_id: int, me: Login = Depends(auth.
     a = _manageable(me, athlete_id, coach_only=True)
     if not a["login"]:
         raise HTTPException(404)
-    return _athlete_page(request, me, a, None, link=_signup_link(a["login"], request))
+    return _athlete_page(request, me, a, None, link=_signup_link(a["login"], request), view="settings")
 
 
 def _signup_link(username: str, request: Request) -> str:
@@ -371,7 +379,7 @@ def _signup_link(username: str, request: Request) -> str:
 
 def _athlete_page(
     request: Request, me: Login, a, model: str | None, notice: str | None = None, error: str | None = None,
-    status: int = 200, link: str | None = None,
+    status: int = 200, link: str | None = None, view: str = "dashboard",
 ):
     is_coach = me.admin or a["owner"] == me.username
     is_self = a["login"] == me.username
@@ -386,7 +394,7 @@ def _athlete_page(
     logins = db.logins()
     return templates.TemplateResponse(
         request,
-        "athlete.html",
+        "athlete_settings.html" if view == "settings" else "athlete.html",
         {
             "me": me,
             "athlete": a,
@@ -408,6 +416,7 @@ def _athlete_page(
             "free_logins": [u["username"] for u in logins if u["profile_id"] is None],
             "languages": describe.LANGUAGES,
             "link": link,
+            "view": view,
         },
         status_code=status,
     )
@@ -433,13 +442,13 @@ def share(athlete_id: int, me: Login = Depends(auth.current), username: str = Fo
     a = _manageable(me, athlete_id, coach_only=True)
     if db.login(username) and username != a["owner"]:
         db.add_share(a["id"], username)
-    return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+    return RedirectResponse(f"/athletes/{athlete_id}/settings", status_code=303)
 
 
 @app.post("/athletes/{athlete_id}/unshare")
 def unshare(athlete_id: int, me: Login = Depends(auth.current), username: str = Form(...)):
     db.remove_share(_manageable(me, athlete_id, coach_only=True)["id"], username)
-    return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+    return RedirectResponse(f"/athletes/{athlete_id}/settings", status_code=303)
 
 
 @app.post("/athletes/{athlete_id}/owner")
@@ -448,7 +457,7 @@ def change_owner(athlete_id: int, me: Login = Depends(auth.admin), owner: str = 
     row = db.login(owner)
     if row and row["role"] != "athlete":
         db.set_owner(a["id"], owner)
-    return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
+    return RedirectResponse(f"/athletes/{athlete_id}/settings", status_code=303)
 
 
 @app.get("/account", response_class=HTMLResponse)
