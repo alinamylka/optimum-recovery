@@ -196,6 +196,11 @@ def _card(me: Login, a) -> dict:
     return {"athlete": a, "signals": signals, "shared_by": shared_by}
 
 
+@app.get("/athletes/new", response_class=HTMLResponse)
+def new_athlete(request: Request, me: Login = Depends(auth.coach)):
+    return templates.TemplateResponse(request, "add_athlete.html", {"me": me})
+
+
 @app.post("/athletes")
 def create(
     me: Login = Depends(auth.coach),

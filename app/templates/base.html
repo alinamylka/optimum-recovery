@@ -50,10 +50,11 @@
 <body>
 <header>
   <a href="/" style="display:flex;align-items:center;gap:8px"><img src="/static/icon.svg" alt="" width="26" height="26">Optimum Recovery</a>
-  <nav style="margin-left:auto;display:flex;gap:14px;align-items:center">
+  <nav style="margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px 14px;align-items:center">
     {% if me %}
     {% if me.profile_id %}<a href="/athletes/{{ me.profile_id }}" style="font-weight:400">My data</a>{% endif %}
     {% if me.role != 'athlete' %}<a href="/" style="font-weight:400">Athletes</a>{% endif %}
+    {% if me.role != 'athlete' %}<a href="/athletes/new" style="font-weight:400">+ Add athlete</a>{% endif %}
     {% if me.admin %}<a href="/users" style="font-weight:400">Users</a>{% endif %}
     <a href="/account" class="muted" style="font-weight:400">{{ me.username }} · {{ me.role }}</a>
     <form method="post" action="/logout" style="margin:0"><button class="plain">Sign out</button></form>

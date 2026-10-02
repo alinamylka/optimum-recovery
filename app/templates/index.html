@@ -18,23 +18,7 @@
 {% endfor %}
 </div>
 {% else %}
-<p class="muted">No athletes yet — add the first one below.</p>
+<p class="muted">No athletes yet{% if me.role != 'athlete' %} — <a href="/athletes/new">add the first one</a>{% endif %}.</p>
 {% endfor %}
 
-{% if me.role != 'athlete' %}
-<div class="card">
-  <h3 style="margin-top:0">Add athlete</h3>
-  <form class="row" method="post" action="/athletes">
-    <input name="name" placeholder="Name (empty: from intervals.icu)">
-    <input name="intervals_id" placeholder="intervals.icu athlete id (optional)">
-    <input name="api_key" placeholder="intervals.icu API key (optional)" type="password">
-    <button>Add</button>
-  </form>
-  <p class="muted" style="margin-bottom:0">
-    With an intervals.icu key the data syncs by itself (Settings → Developer Settings; athlete id like <code>i123456</code>, empty = the key's own account).
-    Without it, upload a TrainingPeaks or Oura export on the athlete page. The athlete doesn't need an account;
-    you can create one for them later on their page.
-  </p>
-</div>
-{% endif %}
 {% endblock %}
