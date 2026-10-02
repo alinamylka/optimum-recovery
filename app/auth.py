@@ -41,6 +41,11 @@ class Login:
     role: str
     profile_id: int | None = None  # the athlete profile that is this person, if any
     language: str = "pl"
+    name: str = ""  # from their own athlete profile, if they have one
+
+    @property
+    def display(self) -> str:
+        return self.name or self.username
 
     @property
     def admin(self) -> bool:
@@ -163,7 +168,10 @@ def current(request: Request, credentials: HTTPBasicCredentials | None = Depends
         if row is None:
             raise NotSignedIn()
     profile = db.own_profile(row["username"])
-    return Login(row["username"], row["role"], profile["id"] if profile else None, row["language"] or "pl")
+    return Login(
+        row["username"], row["role"], profile["id"] if profile else None, row["language"] or "pl",
+        profile["name"] if profile else "",
+    )
 
 
 def coach(me: Login = Depends(current)) -> Login:

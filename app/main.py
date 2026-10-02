@@ -192,7 +192,7 @@ def _card(me: Login, a) -> dict:
     _refresh_if_stale(a)
     data = db.metrics(a["id"])
     signals = [(m, _latest(m, m.analyse(data), me.language)) for m in models.MODELS.values()]
-    shared_by = a["owner"] if a["owner"] != me.username and a["login"] != me.username and not me.admin else None
+    shared_by = _names().get(a["owner"], a["owner"]) if a["owner"] != me.username and a["login"] != me.username and not me.admin else None
     return {"athlete": a, "signals": signals, "shared_by": shared_by}
 
 

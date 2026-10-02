@@ -45,6 +45,18 @@
   table.weeks tr.week { cursor:pointer; }
   table.weeks tr.week:hover td { background:var(--line); }
   table.weeks tr.summary td { white-space:normal; line-height:1.55; padding:10px 8px 14px; color:var(--text); background:var(--bg); }
+  details.menu { position:relative; }
+  details.menu summary { cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; }
+  .role { display:inline-grid; place-items:center; width:20px; height:20px; border-radius:50%; font-size:11px; font-weight:700;
+          background:var(--accent); color:#fff; }
+  button.link { background:none; color:var(--text); width:100%; text-align:left; padding:7px 10px; border-radius:6px; }
+  button.link:hover { background:var(--bg); }
+  details.menu summary::-webkit-details-marker { display:none; }
+  details.menu summary::after { content:"▾"; font-size:11px; color:var(--muted); }
+  details.menu > div { position:absolute; right:0; top:calc(100% + 8px); z-index:10; min-width:170px; display:flex; flex-direction:column;
+                        background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px; box-shadow:0 6px 20px rgba(0,0,0,.12); }
+  details.menu > div a { padding:7px 10px; border-radius:6px; text-decoration:none; color:var(--text); font-weight:400; }
+  details.menu > div a:hover { background:var(--bg); }
 </style>
 </head>
 <body>
@@ -53,14 +65,30 @@
   <nav style="margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px 14px;align-items:center">
     {% if me %}
     {% if me.profile_id %}<a href="/athletes/{{ me.profile_id }}" style="font-weight:400">My data</a>{% endif %}
-    {% if me.role != 'athlete' %}<a href="/" style="font-weight:400">Athletes</a>{% endif %}
-    {% if me.role != 'athlete' %}<a href="/athletes/new" style="font-weight:400">+ Add athlete</a>{% endif %}
+    {% if me.role != 'athlete' %}
+    <details class="menu">
+      <summary>Athletes</summary>
+      <div>
+        <a href="/">All athletes</a>
+        <a href="/athletes/new">+ Add athlete</a>
+      </div>
+    </details>
+    {% endif %}
     {% if me.admin %}<a href="/users" style="font-weight:400">Users</a>{% endif %}
-    <a href="/account" class="muted" style="font-weight:400">{{ me.username }} · {{ me.role }}</a>
-    <form method="post" action="/logout" style="margin:0"><button class="plain">Sign out</button></form>
+    <details class="menu">
+      <summary title="{{ me.username }} · {{ me.role }}">{{ me.display }}{% if me.role != 'athlete' %}<span class="role">{{ me.role[0]|upper }}</span>{% endif %}</summary>
+      <div>
+        <a href="/account">Account</a>
+        <form method="post" action="/logout" style="margin:0"><button class="link">Sign out</button></form>
+      </div>
+    </details>
     {% endif %}
   </nav>
 </header>
 <main>{% block body %}{% endblock %}</main>
+<script>
+  // A click anywhere else closes an open menu.
+  document.addEventListener("click", e => document.querySelectorAll("details.menu[open]").forEach(d => d.contains(e.target) || d.removeAttribute("open")));
+</script>
 </body>
 </html>
