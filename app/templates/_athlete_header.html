@@ -2,9 +2,9 @@
   <h2 style="margin:0">{{ athlete.name }}</h2>
   {% if configurable %}
   {% if view == 'settings' %}
-  <a href="/athletes/{{ athlete.id }}"><button class="plain">{{ t("← Dashboard") }}</button></a>
+  <a href="/athletes/{{ athlete.id }}" style="margin-left:auto"><button class="plain">{{ t("← Dashboard") }}</button></a>
   {% else %}
-  <a href="/athletes/{{ athlete.id }}/settings"><button class="plain">{{ t("Settings") }}</button></a>
+  <a href="/athletes/{{ athlete.id }}/settings" style="margin-left:auto"><button class="plain">{{ t("Settings") }}</button></a>
   {% endif %}
   {% endif %}
 </div>
