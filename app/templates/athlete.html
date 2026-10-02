@@ -4,7 +4,7 @@
 <h2 style="margin-top:0">{{ athlete.name }}</h2>
 {% if is_self and athlete.owner != me.username %}<p class="muted">Your profile · coach: {{ athlete.owner }}</p>
 {% elif not mine %}<p class="muted">Shared with you by {{ athlete.owner }} — view only.</p>
-{% elif athlete.owner != me.username %}<p class="muted">Coach: {{ athlete.owner }} (you see it as admin)</p>{% endif %}
+{% elif athlete.owner != me.username %}<p class="muted">Coach: {{ coach_name }} (you see it as admin)</p>{% endif %}
 {% if notice %}
 <div class="card" style="border-color:var(--green)"><b>{{ notice }}</b>
   <div class="muted">Copy it now — it can't be shown again. Send it to the athlete yourself.</div></div>

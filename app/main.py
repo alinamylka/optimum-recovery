@@ -99,9 +99,10 @@ def index(request: Request, me: Login = Depends(auth.current)):
     if own:
         groups["You"] = [own]
     if me.admin:
+        names = _names()
         for a in db.all_athletes():
             if not own or a["id"] != own["id"]:
-                groups.setdefault(f"Coach: {a['owner']}", []).append(a)
+                groups.setdefault(f"Coach: {names[a['owner']]}", []).append(a)
     else:
         coached = [a for a in db.athletes(me.username) if not own or a["id"] != own["id"]]
         if coached:
@@ -111,6 +112,11 @@ def index(request: Request, me: Login = Depends(auth.current)):
             groups["Shared with you"] = shared
     cards = {heading: [_card(me, a) for a in athletes] for heading, athletes in groups.items()}
     return templates.TemplateResponse(request, "index.html", {"me": me, "groups": cards})
+
+
+def _names() -> dict[str, str]:
+    """Each login's full name from its own athlete profile, else the login itself."""
+    return {u["username"]: u["profile"] or u["username"] for u in db.logins()}
 
 
 def _card(me: Login, a) -> dict:
@@ -267,6 +273,7 @@ def _athlete_page(
             "configurable": is_coach or is_self,
             "is_self": is_self,
             "shares": shares,
+            "coach_name": next((u["profile"] or u["username"] for u in logins if u["username"] == a["owner"]), a["owner"]),
             "share_candidates": [u["username"] for u in logins if u["username"] not in {a["owner"], *shares}],
             "coaches": [u["username"] for u in logins if u["role"] != "athlete"] if me.admin else [],
             "free_logins": [u["username"] for u in logins if u["profile_id"] is None],
