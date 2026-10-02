@@ -16,7 +16,7 @@ from fastapi.templating import Jinja2Templates
 from . import auth, db, describe, mailer, models
 from .auth import Login
 from .model import Params, params_dict
-from .sources import fetch_intervals, parse_export
+from .sources import fetch_intervals, fetch_intervals_name, parse_export
 
 app = FastAPI(title="Optimum Recovery")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -124,11 +124,15 @@ def _card(me: Login, a) -> dict:
 @app.post("/athletes")
 def create(
     me: Login = Depends(auth.coach),
-    name: str = Form(...),
+    name: str = Form(""),
     intervals_id: str = Form(""),
     api_key: str = Form(""),
 ):
-    athlete_id = db.add_athlete(me.username, name.strip(), intervals_id.strip(), api_key.strip())
+    # Left empty, the name comes from the athlete's intervals.icu profile.
+    name = name.strip() or (api_key.strip() and fetch_intervals_name(intervals_id.strip(), api_key.strip()))
+    if not name:
+        raise HTTPException(400, "Give the athlete a name, or an intervals.icu key whose profile has one")
+    athlete_id = db.add_athlete(me.username, name, intervals_id.strip(), api_key.strip())
     if api_key.strip():
         _sync(db.athlete_by_id(athlete_id))
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)

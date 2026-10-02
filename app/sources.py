@@ -14,6 +14,18 @@ import pandas as pd
 INTERVALS = "https://intervals.icu/api/v1"
 
 
+def fetch_intervals_name(athlete_id: str, api_key: str) -> str | None:
+    """The athlete's name as set in intervals.icu, or None when it can't be read."""
+    try:
+        response = httpx.get(f"{INTERVALS}/athlete/{athlete_id or '0'}", auth=("API_KEY", api_key), timeout=15)
+        response.raise_for_status()
+        profile = response.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+    full = " ".join(p for p in (profile.get("firstname"), profile.get("lastname")) if p and p.strip())
+    return (full or profile.get("name") or "").strip() or None
+
+
 def fetch_intervals(athlete_id: str, api_key: str, days: int = 400) -> pd.DataFrame:
     """
     Daily wellness from intervals.icu. A coach's key works for athletes who

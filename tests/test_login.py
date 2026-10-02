@@ -51,3 +51,16 @@ def test_next_stays_on_site(tmp_path, monkeypatch):
     with client(tmp_path, monkeypatch) as c:
         r = c.post("/login", data={"username": "alina", "password": "s3cret", "next": "//evil.example"}, follow_redirects=False)
         assert r.headers["location"] == "/"
+
+
+def test_athlete_name_from_intervals(tmp_path, monkeypatch):
+    from app import main
+
+    monkeypatch.setattr(main, "fetch_intervals_name", lambda athlete_id, key: "levisek")
+    monkeypatch.setattr(main, "_sync", lambda a: None)
+    with client(tmp_path, monkeypatch) as c:
+        c.post("/login", data={"username": "alina", "password": "s3cret"})
+        r = c.post("/athletes", data={"intervals_id": "i50345", "api_key": "k"}, follow_redirects=False)
+        assert r.status_code == 303
+        assert "levisek" in c.get(r.headers["location"]).text
+        assert c.post("/athletes", data={"name": " "}).status_code == 400
