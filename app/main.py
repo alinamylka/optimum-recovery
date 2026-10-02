@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -35,6 +36,51 @@ def startup() -> None:
     db.init()
     auth.seed_from_env()
     mailer.start()
+
+
+@app.exception_handler(auth.NotSignedIn)
+async def not_signed_in(request: Request, exc):
+    # Apps reading the API get the Basic auth challenge; people go to the sign-in page.
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "Not authenticated"}, status_code=401, headers={"WWW-Authenticate": "Basic"})
+    target = request.url.path if request.method == "GET" else "/"
+    return RedirectResponse(f"/login?next={target}" if target != "/" else "/login", status_code=303)
+
+
+def _safe_next(target: str | None) -> str:
+    """Only paths on this site, so the sign-in page can't send anyone elsewhere."""
+    return target if target and target.startswith("/") and not target.startswith("//") else "/"
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, next: str | None = None):
+    return templates.TemplateResponse(request, "login.html", {"me": None, "next": _safe_next(next)})
+
+
+@app.post("/login", response_class=HTMLResponse)
+def login(request: Request, username: str = Form(...), password: str = Form(...), next: str = Form("/")):
+    row = auth.check_password(username.strip(), password)
+    if row is None:
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {"me": None, "next": _safe_next(next), "username": username, "error": "Wrong login or password."},
+            status_code=401,
+        )
+    value, max_age = auth.session_cookie(row)
+    response = RedirectResponse(_safe_next(next), status_code=303)
+    response.set_cookie(
+        auth.COOKIE, value, max_age=max_age, httponly=True, samesite="lax",
+        secure=os.environ.get("PUBLIC_URL", "").startswith("https://"),
+    )
+    return response
+
+
+@app.post("/logout")
+def logout():
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie(auth.COOKIE)
+    return response
 
 
 @app.get("/healthz")
