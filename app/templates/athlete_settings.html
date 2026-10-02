@@ -73,7 +73,7 @@
      They choose their own password and can change login and email later.</p>
   {% if free_logins %}
   <form method="post" action="/athletes/{{ athlete.id }}/account" class="row" style="margin-top:12px">
-    <select name="existing">{% for u in free_logins %}<option>{{ u }}</option>{% endfor %}</select>
+    <select name="existing">{% for u in free_logins %}<option value="{{ u }}">{{ person(u) }}</option>{% endfor %}</select>
     <button class="plain">Link existing login</button>
   </form>
   {% endif %}
@@ -107,7 +107,7 @@
 <div class="card">
   <h3 style="margin-top:0">Coach</h3>
   <form class="row" method="post" action="/athletes/{{ athlete.id }}/owner">
-    <select name="owner">{% for u in coaches %}<option {{ 'selected' if u == athlete.owner }}>{{ u }}</option>{% endfor %}</select>
+    <select name="owner">{% for u in coaches %}<option value="{{ u }}" {{ 'selected' if u == athlete.owner }}>{{ person(u) }}</option>{% endfor %}</select>
     <button>Move to this coach</button>
   </form>
   <p class="muted" style="margin-bottom:0">The athlete, all data and the intervals.icu connection move to that login.</p>
@@ -120,12 +120,12 @@
   <p class="muted">People you share with can see the charts, but can't change data, see the API key or delete the athlete.</p>
   {% for u in shares %}
   <form class="row" method="post" action="/athletes/{{ athlete.id }}/unshare" style="margin-bottom:6px">
-    <input type="hidden" name="username" value="{{ u }}"><span>{{ u }}</span><button class="plain">Stop sharing</button>
+    <input type="hidden" name="username" value="{{ u }}"><span>{{ person(u) }}</span><button class="plain">Stop sharing</button>
   </form>
   {% endfor %}
   {% if share_candidates %}
   <form class="row" method="post" action="/athletes/{{ athlete.id }}/share">
-    <select name="username">{% for u in share_candidates %}<option>{{ u }}</option>{% endfor %}</select>
+    <select name="username">{% for u in share_candidates %}<option value="{{ u }}">{{ person(u) }}</option>{% endfor %}</select>
     <button>Share</button>
   </form>
   {% elif not shares %}<p class="muted">No other logins yet.</p>{% endif %}

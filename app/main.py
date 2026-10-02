@@ -182,7 +182,8 @@ def _athlete_groups(me: Login) -> dict[str, tuple[str, list]]:
     if me.admin:
         names = _names()
         for a in db.all_athletes():
-            if not own or a["id"] != own["id"]:
+            # Your own profile is under My data, unless another coach looks after it.
+            if not own or a["id"] != own["id"] or a["owner"] != me.username:
                 groups.setdefault(a["owner"], (names.get(a["owner"], a["owner"]), []))[1].append(a)
         return dict(sorted(groups.items(), key=lambda g: g[1][0].lower()))
     groups["mine"] = ("Your athletes", [a for a in db.athletes(me.username) if not own or a["id"] != own["id"]])
@@ -199,6 +200,8 @@ def _athlete_menu(me: Login | None) -> list[tuple[str, str, int]]:
 
 
 templates.env.globals["athlete_menu"] = _athlete_menu
+# Pages name people by their full name, not their login.
+templates.env.globals["person"] = lambda username: _names().get(username, username)
 
 
 def _names() -> dict[str, str]:
