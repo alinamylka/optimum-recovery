@@ -4,6 +4,7 @@
 *.jpeg
 *.jpg
 *.png
+!app/static/*.png
 data/
 .env
 __pycache__/

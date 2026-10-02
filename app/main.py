@@ -10,7 +10,8 @@ from pathlib import Path
 import httpx
 import pandas as pd
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import auth, db, describe, mailer, models
@@ -20,6 +21,9 @@ from .sources import fetch_intervals, fetch_intervals_name, parse_export
 
 app = FastAPI(title="Optimum Recovery")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+STATIC = Path(__file__).parent / "static"
+# Icons are public: browsers fetch them before anyone signs in.
+app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 # intervals.icu athletes are refreshed on view when their data is older than this.
 STALE_AFTER = timedelta(hours=6)
@@ -141,6 +145,11 @@ def logout():
     response = RedirectResponse("/login", status_code=303)
     response.delete_cookie(auth.COOKIE)
     return response
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return FileResponse(STATIC / "favicon-32.png", media_type="image/png")
 
 
 @app.get("/healthz")
