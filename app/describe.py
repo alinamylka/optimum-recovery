@@ -63,15 +63,6 @@ def _pl_days(n: int) -> str:
 _EN = {
     "days": lambda n: f"{n} day" if n == 1 else f"{n} days",
     "coverage": "Only {days} with data this week. ",
-    "stayed": "The 7-day HRV average stayed around {last:.0f} ms; the normal range was {lo:.0f}–{hi:.0f} ms. ",
-    "rose": "The 7-day HRV average rose from {first:.0f} to {last:.0f} ms; the normal range was {lo:.0f}–{hi:.0f} ms. ",
-    "fell": "The 7-day HRV average fell from {first:.0f} to {last:.0f} ms; the normal range was {lo:.0f}–{hi:.0f} ms. ",
-    "all_inside": "Every day was inside the range: the load was being absorbed and hard sessions were fine. ",
-    "below": "Below the range on {days} — a sign of accumulated fatigue (or illness, stress, travel); "
-    "the method calls for easy training or rest until the average comes back. ",
-    "above": "Above the range on {days}. The method treats this as an easy day too: a sudden rise, "
-    "especially after hard training, is often a rebound rather than extra freshness. ",
-    "inside": "Inside the range on {days}. ",
     "cv_up": "Day-to-day variation rose (CV {before:.1f} → {now:.1f} %). ",
     "cv_warning": "Falling HRV with rising variation is the pattern Plews et al. (2012) saw before "
     "non-functional overreaching — worth watching. ",
@@ -106,7 +97,7 @@ _EN = {
     "above_after_low": "HRV jumped {over:.0f} ms above the range right after a low spell — that is the typical "
     "rebound after overload (Le Meur 2013), not freshness: keep the intensity down until it settles. ",
     "above_big": "HRV went clearly above the range (up to {over:.0f} ms over). A sudden rise can be the body reacting "
-    "to load; the method says easy until the average is back inside. ",
+    "to load; easy training is advised until the average is back inside. ",
     "below_small": "Only {under:.0f} ms under the range — easy days were enough. ",
     "below_big": "It fell well below (up to {under:.0f} ms under): accumulated fatigue, or illness, stress or travel. "
     "Easy training or rest until the average comes back. ",
@@ -117,15 +108,6 @@ _EN = {
 _PL = {
     "days": _pl_days,
     "coverage": "W tym tygodniu dane tylko za {days}. ",
-    "stayed": "7-dniowa średnia HRV utrzymywała się około {last:.0f} ms; norma wynosiła {lo:.0f}–{hi:.0f} ms. ",
-    "rose": "7-dniowa średnia HRV wzrosła z {first:.0f} do {last:.0f} ms; norma wynosiła {lo:.0f}–{hi:.0f} ms. ",
-    "fell": "7-dniowa średnia HRV spadła z {first:.0f} do {last:.0f} ms; norma wynosiła {lo:.0f}–{hi:.0f} ms. ",
-    "all_inside": "Każdy dzień w normie: obciążenie było przyswajane, mocne jednostki były OK. ",
-    "below": "Poniżej normy przez {days} — oznaka nagromadzonego zmęczenia (albo choroby, stresu, podróży); "
-    "metoda zaleca lekki trening lub odpoczynek, aż średnia wróci. ",
-    "above": "Powyżej normy przez {days}. Metoda traktuje to też jako dzień lekki: nagły wzrost, "
-    "zwłaszcza po ciężkim treningu, to często odbicie, a nie dodatkowa świeżość. ",
-    "inside": "W normie przez {days}. ",
     "cv_up": "Zmienność z dnia na dzień wzrosła (CV {before:.1f} → {now:.1f} %). ",
     "cv_warning": "Spadające HRV przy rosnącej zmienności to wzorzec, który Plews i in. (2012) widzieli "
     "przed przeciążeniem niefunkcjonalnym — warto obserwować. ",
@@ -161,7 +143,7 @@ _PL = {
     "above_after_low": "HRV skoczyło o {over:.0f} ms ponad normę zaraz po okresie spadku — to typowe odbicie po "
     "przeciążeniu (Le Meur 2013), a nie świeżość: trzymaj niską intensywność, aż się uspokoi. ",
     "above_big": "HRV wyraźnie powyżej normy (nawet o {over:.0f} ms). Nagły wzrost bywa reakcją organizmu na obciążenie; "
-    "metoda zaleca lekko, aż średnia wróci do normy. ",
+    "zaleca się lekki trening, aż średnia wróci do normy. ",
     "below_small": "Tylko {under:.0f} ms poniżej normy — lżejsze dni wystarczyły. ",
     "below_big": "Spadek był wyraźny (nawet o {under:.0f} ms): nagromadzone zmęczenie albo choroba, stres, podróż. "
     "Lekki trening lub odpoczynek, aż średnia wróci. ",
