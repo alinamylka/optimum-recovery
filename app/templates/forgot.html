@@ -1,21 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Forgot password · Optimum Recovery{% endblock %}
+{% block title %}{{ t("Forgot password") }} · Optimum Recovery{% endblock %}
 {% block body %}
 <div class="card" style="max-width:400px;margin:48px auto">
-  <h2 style="margin-top:0">Forgot your password?</h2>
+  <h2 style="margin-top:0">{{ t("Forgot your password?") }}</h2>
   {% if sent %}
-  <p>If that login has an email address, a link for setting a new password is on its way. It works for a couple of hours.</p>
-  <p class="muted">Nothing arrived? Check spam, or ask your coach or the admin to set a new password for you.</p>
+  <p>{{ t("If that login has an email address, a link for setting a new password is on its way. It works for a couple of hours.") }}</p>
+  <p class="muted">{{ t("Nothing arrived? Check spam, or ask your coach or the admin to set a new password for you.") }}</p>
   {% elif not configured %}
-  <p>Email isn't set up on this server. Ask your coach or the admin to set a new password for you.</p>
+  <p>{{ t("Email isn't set up on this server. Ask your coach or the admin to set a new password for you.") }}</p>
   {% else %}
   <form method="post" action="/forgot" style="display:flex;flex-direction:column;gap:12px">
-    <label>Login or email<br>
+    <label>{{ t("Login or email") }}<br>
       <input name="who" required autofocus autocapitalize="none" autocorrect="off" spellcheck="false" style="width:100%">
     </label>
-    <button>Email me a link</button>
+    <button>{{ t("Email me a link") }}</button>
   </form>
   {% endif %}
-  <p style="margin-bottom:0"><a href="/login">← Sign in</a></p>
+  <p style="margin-bottom:0"><a href="/login">{{ t("← Sign in") }}</a></p>
 </div>
 {% endblock %}

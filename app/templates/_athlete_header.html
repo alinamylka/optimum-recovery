@@ -2,15 +2,15 @@
   <h2 style="margin:0">{{ athlete.name }}</h2>
   {% if configurable %}
   {% if view == 'settings' %}
-  <a href="/athletes/{{ athlete.id }}"><button class="plain">← Dashboard</button></a>
+  <a href="/athletes/{{ athlete.id }}"><button class="plain">{{ t("← Dashboard") }}</button></a>
   {% else %}
-  <a href="/athletes/{{ athlete.id }}/settings"><button class="plain">Settings</button></a>
+  <a href="/athletes/{{ athlete.id }}/settings"><button class="plain">{{ t("Settings") }}</button></a>
   {% endif %}
   {% endif %}
 </div>
-{% if is_self and athlete.owner != me.username %}<p class="muted">Your profile · coach: {{ coach_name }}</p>
-{% elif not mine %}<p class="muted">Shared with you by {{ coach_name }} — view only.</p>
-{% elif athlete.owner != me.username %}<p class="muted">Coach: {{ coach_name }} (you see it as admin)</p>
+{% if is_self and athlete.owner != me.username %}<p class="muted">{{ t("Your profile · coach: {name}", name=coach_name) }}</p>
+{% elif not mine %}<p class="muted">{{ t("Shared with you by {name} — view only.", name=coach_name) }}</p>
+{% elif athlete.owner != me.username %}<p class="muted">{{ t("Coach: {name} (you see it as admin)", name=coach_name) }}</p>
 {% else %}<div style="height:12px"></div>{% endif %}
 {% if notice %}
 <div class="card" style="border-color:var(--green)"><b>{{ notice }}</b></div>

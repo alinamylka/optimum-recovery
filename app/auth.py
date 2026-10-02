@@ -15,7 +15,7 @@ from functools import lru_cache
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from . import db
+from . import db, i18n
 
 log = logging.getLogger("uvicorn.error")
 
@@ -142,19 +142,19 @@ def find(name_or_email: str):
     return db.login_by_email(value) if "@" in value else db.login(value.lower())
 
 
-def password_problem(password: str, again: str) -> str | None:
+def password_problem(password: str, again: str, lang: str = "en") -> str | None:
     if len(password) < MIN_PASSWORD:
-        return f"The password needs at least {MIN_PASSWORD} characters."
+        return i18n.t("The password needs at least {n} characters.", lang, n=MIN_PASSWORD)
     if password != again:
-        return "The two passwords differ."
+        return i18n.t("The two passwords differ.", lang)
     return None
 
 
-def username_problem(username: str) -> str | None:
+def username_problem(username: str, lang: str = "en") -> str | None:
     if not USERNAME.match(username):
-        return "A login is 2–40 lowercase letters, digits, dots, dashes or underscores."
+        return i18n.t("A login is 2–40 lowercase letters, digits, dots, dashes or underscores.", lang)
     if db.login(username):
-        return f"The login {username} is taken."
+        return i18n.t("The login {username} is taken.", lang, username=username)
     return None
 
 
@@ -168,10 +168,12 @@ def current(request: Request, credentials: HTTPBasicCredentials | None = Depends
         if row is None:
             raise NotSignedIn()
     profile = db.own_profile(row["username"])
-    return Login(
+    me = Login(
         row["username"], row["role"], profile["id"] if profile else None, row["language"] or "pl",
         profile["name"] if profile else "",
     )
+    request.state.me = me  # pages speak this person's language
+    return me
 
 
 def coach(me: Login = Depends(current)) -> Login:

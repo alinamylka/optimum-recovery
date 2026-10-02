@@ -1,25 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Sign in · Optimum Recovery{% endblock %}
+{% block title %}{{ t("Sign in") }} · Optimum Recovery{% endblock %}
 {% block body %}
 <div class="card" style="max-width:360px;margin:48px auto">
-  <h2 style="margin-top:0">Sign in</h2>
-  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <h2 style="margin-top:0">{{ t("Sign in") }}</h2>
+  {% if error %}<p class="error">{{ t(error) }}</p>{% endif %}
   <form method="post" action="/login" style="display:flex;flex-direction:column;gap:12px">
     <input type="hidden" name="next" value="{{ next }}">
-    <label>Login or email<br>
+    <label>{{ t("Login or email") }}<br>
       <input name="username" value="{{ username or '' }}" autocomplete="username" autocapitalize="none"
              autocorrect="off" spellcheck="false" required {{ '' if username else 'autofocus' }} style="width:100%">
     </label>
-    <label>Password<br>
+    <label>{{ t("Password") }}<br>
       <span style="display:flex;gap:6px">
         <input id="password" name="password" type="password" autocomplete="current-password" required
                {{ 'autofocus' if username }} style="flex:1;min-width:0">
         <button type="button" class="plain" onclick="const p=document.getElementById('password');
-          p.type = p.type === 'password' ? 'text' : 'password'; this.textContent = p.type === 'password' ? 'Show' : 'Hide'">Show</button>
+          p.type = p.type === 'password' ? 'text' : 'password'; this.textContent = p.type === 'password' ? '{{ t("Show") }}' : '{{ t("Hide") }}'">{{ t("Show") }}</button>
       </span>
     </label>
-    <button type="submit">Sign in</button>
+    <button type="submit">{{ t("Sign in") }}</button>
   </form>
-  <p style="margin-bottom:0"><a href="/forgot">Forgot your password?</a></p>
+  <p style="margin-bottom:0"><a href="/forgot">{{ t("Forgot your password?") }}</a></p>
 </div>
 {% endblock %}

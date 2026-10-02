@@ -1,46 +1,46 @@
 {% extends "base.html" %}
-{% block title %}Account · Optimum Recovery{% endblock %}
+{% block title %}{{ t("Account") }} · Optimum Recovery{% endblock %}
 {% block body %}
-<h2 style="margin-top:0">Account</h2>
+<h2 style="margin-top:0">{{ t("Account") }}</h2>
 {% if notice %}<div class="card" style="border-color:var(--green)"><b>{{ notice }}</b></div>{% endif %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 
 <div class="card">
-  <h3 style="margin-top:0">Login</h3>
+  <h3 style="margin-top:0">{{ t("Login") }}</h3>
   <form class="row" method="post" action="/account/username">
     <input name="username" value="{{ me.username }}" required pattern="[A-Za-z0-9._-]+" autocapitalize="none">
-    <button>Change login</button>
+    <button>{{ t("Change login") }}</button>
   </form>
-  <p class="muted" style="margin-bottom:0">You can also sign in with your email address{% if row.email %} ({{ row.email }}){% endif %}.</p>
+  <p class="muted" style="margin-bottom:0">{{ t("You can also sign in with your email address") }}{% if row.email %} ({{ row.email }}){% endif %}.</p>
 </div>
 
 <div class="card">
-  <h3 style="margin-top:0">Password</h3>
+  <h3 style="margin-top:0">{{ t("Password") }}</h3>
   <form class="row" method="post" action="/account/password">
-    <input name="current" type="password" placeholder="Current password" autocomplete="current-password" required>
-    <input name="password" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" minlength="8" required>
-    <input name="again" type="password" placeholder="New password again" autocomplete="new-password" minlength="8" required>
-    <button>Change password</button>
+    <input name="current" type="password" placeholder="{{ t('Current password') }}" autocomplete="current-password" required>
+    <input name="password" type="password" placeholder="{{ t('New password (8+ characters)') }}" autocomplete="new-password" minlength="8" required>
+    <input name="again" type="password" placeholder="{{ t('New password again') }}" autocomplete="new-password" minlength="8" required>
+    <button>{{ t("Change password") }}</button>
   </form>
 </div>
 
 <div class="card">
-  <h3 style="margin-top:0">Monday email</h3>
-  <p class="muted">Every Monday morning: each of your athletes' signal for today and a written summary of the week that just ended — to plan the new week.</p>
+  <h3 style="margin-top:0">{{ t("Monday email") }}</h3>
+  <p class="muted">{{ t("Every Monday morning: each of your athletes' signal for today and a written summary of the week that just ended — to plan the new week.") }}</p>
   <form class="row" method="post" action="/account">
     <input name="email" type="email" value="{{ row.email or '' }}" placeholder="you@example.com" style="min-width:260px">
-    <label><input type="checkbox" name="weekly" value="1" {{ 'checked' if row.weekly_mail }}> send the Monday email</label>
-    <label>Language (email and summaries)
+    <label><input type="checkbox" name="weekly" value="1" {{ 'checked' if row.weekly_mail }}> {{ t("send the Monday email") }}</label>
+    <label>{{ t("Language") }}
       <select name="language">{% for code, name in languages.items() %}<option value="{{ code }}" {{ 'selected' if row.language == code }}>{{ name }}</option>{% endfor %}</select>
     </label>
-    <button>Save</button>
+    <button>{{ t("Save") }}</button>
   </form>
   <p style="margin-bottom:0">
-    <a href="/account/preview" target="_blank">Preview this week's email</a>
+    <a href="/account/preview" target="_blank">{{ t("Preview this week's email") }}</a>
     {% if configured and row.email %}
-    · <form method="post" action="/account/test" style="display:inline"><button class="plain">Send me a test now</button></form>
+    · <form method="post" action="/account/test" style="display:inline"><button class="plain">{{ t("Send me a test now") }}</button></form>
     {% elif not configured %}
-    · <span class="muted">sending is not set up on the server yet</span>
+    · <span class="muted">{{ t("sending is not set up on the server yet") }}</span>
     {% endif %}
   </p>
 </div>

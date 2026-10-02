@@ -1,9 +1,8 @@
 {% extends "base.html" %}
 {% block body %}
 <div class="card">
-  <h2 style="margin-top:0">Nothing here for this login</h2>
-  <p>This page doesn't exist, or the athlete belongs to another login and hasn't been shared with you.
-     Ask the owner to share it (athlete page → Sharing).</p>
-  <p><a href="/">← Your athletes</a></p>
+  <h2 style="margin-top:0">{{ t("Nothing here for this login") }}</h2>
+  <p>{{ t("This page doesn't exist, or the athlete belongs to another login and hasn't been shared with you. Ask the owner to share it (athlete page → Sharing).") }}</p>
+  <p><a href="/">{{ t("← Your athletes") }}</a></p>
 </div>
 {% endblock %}

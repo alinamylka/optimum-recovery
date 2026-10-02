@@ -1,25 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Set password · Optimum Recovery{% endblock %}
+{% block title %}{{ t("Set password") }} · Optimum Recovery{% endblock %}
 {% block body %}
 <div class="card" style="max-width:400px;margin:48px auto">
-  <h2 style="margin-top:0">{{ 'Welcome' if row and not row.email else 'Set your password' }}</h2>
-  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <h2 style="margin-top:0">{{ t('Welcome') if row and not row.email else t('Set your password') }}</h2>
+  {% if error %}<p class="error">{{ t(error) }}</p>{% endif %}
   {% if row %}
   <form method="post" action="/reset" style="display:flex;flex-direction:column;gap:12px">
     <input type="hidden" name="token" value="{{ token }}">
-    <p style="margin:0">Your login: <b>{{ row.username }}</b> <span class="muted">(you can change it later under Account)</span></p>
+    <p style="margin:0">{{ t("Your login: <b>{username}</b>", username=row.username) }} <span class="muted">{{ t("(you can change it later under Account)") }}</span></p>
     <input type="text" name="username" value="{{ row.username }}" autocomplete="username" hidden>
-    <input name="password" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" minlength="8" required autofocus>
-    <input name="again" type="password" placeholder="Again" autocomplete="new-password" minlength="8" required>
+    <input name="password" type="password" placeholder="{{ t('New password (8+ characters)') }}" autocomplete="new-password" minlength="8" required autofocus>
+    <input name="again" type="password" placeholder="{{ t('Again') }}" autocomplete="new-password" minlength="8" required>
     {% if not row.email %}
-    <input name="email" type="email" placeholder="Your email (optional)" autocomplete="email">
-    <span class="muted" style="margin-top:-6px;font-size:13px">For a summary every Monday and for resetting a forgotten password.</span>
+    <input name="email" type="email" placeholder="{{ t('Your email (optional)') }}" autocomplete="email">
+    <span class="muted" style="margin-top:-6px;font-size:13px">{{ t("For a summary every Monday and for resetting a forgotten password.") }}</span>
     {% endif %}
-    <button>Save and sign in</button>
+    <button>{{ t("Save and sign in") }}</button>
   </form>
   {% else %}
-  <p>This link has expired or was already used.</p>
-  <p style="margin-bottom:0"><a href="/forgot">Send a new one</a></p>
+  <p>{{ t("This link has expired or was already used.") }}</p>
+  <p style="margin-bottom:0"><a href="/forgot">{{ t("Send a new one") }}</a></p>
   {% endif %}
 </div>
 {% endblock %}

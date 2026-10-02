@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block body %}
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-  <h3 style="margin:0">{{ label }}</h3>
-  <a href="/athletes/new" style="margin-left:auto"><button>Add athlete</button></a>
+  <h3 style="margin:0">{{ t(label) }}</h3>
+  <a href="/athletes/new" style="margin-left:auto"><button>{{ t("Add athlete") }}</button></a>
 </div>
 
 {% if cards %}
@@ -10,18 +10,18 @@
 {% for c in cards %}
   <a class="card" href="/athletes/{{ c.athlete.id }}" style="text-decoration:none;color:inherit">
     <div style="font-weight:600">{{ c.athlete.name }}</div>
-    {% if c.shared_by %}<div class="muted" style="font-size:13px">shared by {{ c.shared_by }}</div>{% endif %}
+    {% if c.shared_by %}<div class="muted" style="font-size:13px">{{ t("shared by {name}", name=c.shared_by) }}</div>{% endif %}
     {% for m, today in c.signals %}
       <div style="margin-top:6px">
         {% if today %}<span class="dot {{ today.signal }}"></span><b>{{ today.state }}</b>
-        {% else %}<span class="dot"></span><span class="muted">No data</span>{% endif %}
-        <div class="muted" style="font-size:13px">{{ m.name }}{% if today %} · {{ today.date }}{% endif %}</div>
+        {% else %}<span class="dot"></span><span class="muted">{{ t("No data") }}</span>{% endif %}
+        <div class="muted" style="font-size:13px">{{ t(m.name) }}{% if today %} · {{ today.date }}{% endif %}</div>
       </div>
     {% endfor %}
   </a>
 {% endfor %}
 </div>
 {% else %}
-<p class="muted">No athletes here yet.</p>
+<p class="muted">{{ t("No athletes here yet.") }}</p>
 {% endif %}
 {% endblock %}

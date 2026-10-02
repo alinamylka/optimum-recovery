@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,7 +26,7 @@
   .green { background:var(--green); } .amber { background:var(--amber); } .red { background:var(--red); }
   .big { font-size:28px; font-weight:650; }
   .stats { display:flex; flex-wrap:wrap; gap:24px; margin-top:8px; }
-  .stats div span { display:block; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .stats div > span { display:block; font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
   input, button, select { font:inherit; padding:7px 10px; border-radius:7px; border:1px solid var(--line); background:var(--card); color:inherit; }
   button { background:var(--accent); color:#fff; border:none; cursor:pointer; }
   button.plain { background:none; color:var(--muted); border:1px solid var(--line); }
@@ -57,6 +57,12 @@
                         background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px; box-shadow:0 6px 20px rgba(0,0,0,.12); }
   details.menu > div a { padding:7px 10px; border-radius:6px; text-decoration:none; color:var(--text); font-weight:400; }
   details.menu > div a:hover { background:var(--bg); }
+  .info { display:inline-grid; place-items:center; width:15px; height:15px; margin-left:4px; border-radius:50%;
+          border:1px solid currentColor; font:700 10px/1 system-ui; cursor:help; vertical-align:1px; opacity:.7;
+          text-transform:none; letter-spacing:0; }
+  .info:hover, .info:focus { opacity:1; outline:none; }
+  #tip { position:fixed; z-index:50; max-width:min(280px, calc(100vw - 32px)); padding:8px 10px; border-radius:7px;
+         background:var(--text); color:var(--bg); font-size:13px; line-height:1.4; pointer-events:none; }
 </style>
 </head>
 <body>
@@ -64,31 +70,49 @@
   <a href="/" style="display:flex;align-items:center;gap:8px"><img src="/static/icon.svg" alt="" width="26" height="26">Optimum Recovery</a>
   <nav style="margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px 14px;align-items:center">
     {% if me %}
-    {% if me.profile_id %}<a href="/athletes/{{ me.profile_id }}" style="font-weight:400">My data</a>{% endif %}
+    {% if me.profile_id %}<a href="/athletes/{{ me.profile_id }}" style="font-weight:400">{{ t("My data") }}</a>{% endif %}
     {% if me.role != 'athlete' %}
     <details class="menu">
-      <summary>Athletes</summary>
+      <summary>{{ t("Athletes") }}</summary>
       <div>
         {% for key, label, count in athlete_menu(me) %}
-        <a href="/?tab={{ key }}" style="display:flex;gap:12px">{{ label }}<span class="muted" style="margin-left:auto">{{ count }}</span></a>
+        <a href="/?tab={{ key }}" style="display:flex;gap:12px">{{ t(label) }}<span class="muted" style="margin-left:auto">{{ count }}</span></a>
         {% endfor %}
-        <a href="/athletes/new" style="border-top:1px solid var(--line);border-radius:0 0 6px 6px;margin-top:4px">Add athlete</a>
+        <a href="/athletes/new" style="border-top:1px solid var(--line);border-radius:0 0 6px 6px;margin-top:4px">{{ t("Add athlete") }}</a>
       </div>
     </details>
     {% endif %}
-    {% if me.admin %}<a href="/users" style="font-weight:400">Users</a>{% endif %}
+    {% if me.admin %}<a href="/users" style="font-weight:400">{{ t("Users") }}</a>{% endif %}
     <details class="menu">
-      <summary title="{{ me.username }} · {{ me.role }}">{{ me.display }}{% if me.role != 'athlete' %}<span class="role">{{ me.role[0]|upper }}</span>{% endif %}</summary>
+      <summary title="{{ me.username }} · {{ t(me.role) }}">{{ me.display }}{% if me.role != 'athlete' %}<span class="role">{{ me.role[0]|upper }}</span>{% endif %}</summary>
       <div>
-        <a href="/account">Account</a>
-        <form method="post" action="/logout" style="margin:0"><button class="link">Sign out</button></form>
+        <a href="/account">{{ t("Account") }}</a>
+        <form method="post" action="/logout" style="margin:0"><button class="link">{{ t("Sign out") }}</button></form>
       </div>
     </details>
     {% endif %}
   </nav>
 </header>
 <main>{% block body %}{% endblock %}</main>
+<div id="tip" hidden></div>
 <script>
+  // The (i) next to a number explains it: on hover, on focus, or on a tap.
+  const tip = document.getElementById("tip");
+  const showTip = el => {
+    tip.textContent = el.dataset.tip; tip.hidden = false;
+    const r = el.getBoundingClientRect(), w = tip.offsetWidth;
+    tip.style.left = Math.max(16, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 16)) + "px";
+    tip.style.top = (r.bottom + 8 + tip.offsetHeight > innerHeight ? r.top - tip.offsetHeight - 8 : r.bottom + 8) + "px";
+  };
+  document.querySelectorAll(".info").forEach(el => {
+    el.addEventListener("mouseenter", () => showTip(el));
+    el.addEventListener("focus", () => showTip(el));
+    el.addEventListener("click", e => { e.stopPropagation(); showTip(el); });
+    el.addEventListener("mouseleave", () => tip.hidden = true);
+    el.addEventListener("blur", () => tip.hidden = true);
+  });
+  addEventListener("scroll", () => tip.hidden = true, {passive: true});
+  document.addEventListener("click", () => tip.hidden = true);
   // A click anywhere else closes an open menu.
   document.addEventListener("click", e => document.querySelectorAll("details.menu[open]").forEach(d => d.contains(e.target) || d.removeAttribute("open")));
 </script>

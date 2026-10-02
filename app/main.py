@@ -8,19 +8,31 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
+from jinja2 import pass_context
 import pandas as pd
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import auth, db, describe, mailer, models
+from . import auth, db, describe, i18n, mailer, models
 from .auth import Login
 from .model import Params, params_dict
 from .sources import fetch_intervals, fetch_intervals_name, parse_export
 
 app = FastAPI(title="Optimum Recovery")
-templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+templates = Jinja2Templates(
+    directory=Path(__file__).parent / "templates",
+    context_processors=[lambda request: {"lang": i18n.language(request)}],
+)
+
+
+@pass_context
+def _t(context, text: str, **values):
+    return i18n.t(text, context.get("lang", i18n.DEFAULT), **values)
+
+
+templates.env.globals["t"] = _t
 STATIC = Path(__file__).parent / "static"
 # Icons are public: browsers fetch them before anyone signs in.
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
@@ -128,8 +140,9 @@ def reset(
     request: Request, token: str = Form(""), password: str = Form(...), again: str = Form(...), email: str = Form("")
 ):
     row = auth.from_reset_token(token)
-    problem = None if row else "This link has expired or was already used."
-    problem = problem or auth.password_problem(password, again)
+    lang = i18n.language(request)
+    problem = None if row else i18n.t("This link has expired or was already used.", lang)
+    problem = problem or auth.password_problem(password, again, lang)
     if problem:
         return templates.TemplateResponse(
             request, "reset.html", {"me": None, "token": token, "row": row, "error": problem}, status_code=400
@@ -250,7 +263,7 @@ async def upload(request: Request, athlete_id: int, me: Login = Depends(auth.cur
     try:
         frame = parse_export(await file.read())
     except Exception as e:  # a wrong file should say what is wrong with it, on the page
-        problem = f"{file.filename} could not be imported: {e or type(e).__name__}"
+        problem = i18n.t("{file} could not be imported: {error}", me.language, file=file.filename, error=str(e) or type(e).__name__)
         return _athlete_page(request, me, a, None, error=problem, status=400, view="settings")
     db.save_metrics(a["id"], frame)
     return RedirectResponse(f"/athletes/{athlete_id}", status_code=303)
@@ -337,7 +350,7 @@ def account(
     username = new_username.strip().lower()
     email = email.strip() or (a["email"] or "")
     if username:
-        problem = auth.username_problem(username)
+        problem = auth.username_problem(username, me.language)
         if problem:
             return _athlete_page(request, me, a, None, error=problem, status=400, view="settings")
         # Nobody knows this password: the athlete sets their own through the sign-up link.
@@ -347,13 +360,13 @@ def account(
         if email:
             # The athlete's Monday email now goes to their login, in the profile's language.
             db.set_mail(username, email, bool(a["weekly_mail"]))
-        notice = f"Created login {username} for {a['name']}."
+        notice = i18n.t("Created login {username} for {name}.", me.language, username=username, name=a["name"])
         if email and mailer.configured():
             try:
                 _mail_link("invite", db.login(username), email, request, inviter=_names()[me.username])
-                notice += f" The sign-up link also went to {email}."
+                notice += " " + i18n.t("The sign-up link also went to {email}.", me.language, email=email)
             except Exception as e:
-                notice += f" Mailing the sign-up link to {email} failed: {e}"
+                notice += " " + i18n.t("Mailing the sign-up link to {email} failed: {error}", me.language, email=email, error=str(e))
         return _athlete_page(
             request, me, db.athlete_by_id(a["id"]), None, notice, link=_signup_link(username, request), view="settings"
         )
@@ -502,13 +515,13 @@ def change_password(
     again: str = Form(...),
 ):
     if auth.check_password(me.username, current) is None:
-        return account_page(request, me, error="The current password is wrong.")
-    problem = auth.password_problem(password, again)
+        return account_page(request, me, error=i18n.t("The current password is wrong.", me.language))
+    problem = auth.password_problem(password, again, me.language)
     if problem:
         return account_page(request, me, error=problem)
     db.update_login(me.username, password_hash=auth.hash_password(password))
     # The new hash ends every other session; this browser gets a new cookie.
-    return _signed_in(account_page(request, me, notice="Password changed."), db.login(me.username))
+    return _signed_in(account_page(request, me, notice=i18n.t("Password changed.", me.language)), db.login(me.username))
 
 
 @app.post("/account/username", response_class=HTMLResponse)
@@ -516,7 +529,7 @@ def change_username(request: Request, me: Login = Depends(auth.current), usernam
     username = username.strip().lower()
     if username == me.username:
         return RedirectResponse("/account", status_code=303)
-    problem = auth.username_problem(username)
+    problem = auth.username_problem(username, me.language)
     if problem:
         return account_page(request, me, error=problem)
     db.rename_login(me.username, username)
@@ -536,12 +549,12 @@ def test_mail(request: Request, me: Login = Depends(auth.current)):
     row = db.login(me.username)
     built = mailer.report(me.username, me.role, language=me.language)
     if not row["email"] or built is None or not mailer.configured():
-        return account_page(request, me, error="Nothing to send: add an email address and athletes first.")
+        return account_page(request, me, error=i18n.t("Nothing to send: add an email address and athletes first.", me.language))
     try:
         mailer.send(row["email"], *built)
     except Exception as e:
-        return account_page(request, me, error=f"Sending failed: {e}")
-    return account_page(request, me, notice=f"Sent to {row['email']}.")
+        return account_page(request, me, error=i18n.t("Sending failed: {error}", me.language, error=str(e)))
+    return account_page(request, me, notice=i18n.t("Sent to {email}.", me.language, email=row["email"]))
 
 
 @app.post("/users/{username}/email")
@@ -577,7 +590,9 @@ def add_user(
         db.add_login(username, auth.hash_password(password), role)
     except sqlite3.IntegrityError:
         raise HTTPException(400, f"User {username} already exists")
-    return _users_page(request, me, f"Created {username} ({role}). Password: {password}")
+    notice = i18n.t("Created {username} ({role}). Password: {password}", me.language,
+                    username=username, role=i18n.t(role, me.language), password=password)
+    return _users_page(request, me, notice)
 
 
 @app.post("/users/{username}/reset", response_class=HTMLResponse)
@@ -586,7 +601,7 @@ def reset_password(request: Request, username: str, me: Login = Depends(auth.adm
         raise HTTPException(404)
     password = auth.new_password()
     db.update_login(username, password_hash=auth.hash_password(password))
-    return _users_page(request, me, f"New password for {username}: {password}")
+    return _users_page(request, me, i18n.t("New password for {username}: {password}", me.language, username=username, password=password))
 
 
 @app.post("/users/{username}/rename", response_class=HTMLResponse)
@@ -596,7 +611,7 @@ def rename_user(request: Request, username: str, me: Login = Depends(auth.admin)
         raise HTTPException(404)
     if new == username:
         return RedirectResponse("/users", status_code=303)
-    problem = auth.username_problem(new)
+    problem = auth.username_problem(new, me.language)
     if problem:
         return _users_page(request, me, None, error=problem)
     db.rename_login(username, new)

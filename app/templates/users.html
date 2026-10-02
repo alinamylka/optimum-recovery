@@ -1,32 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Users · Optimum Recovery{% endblock %}
+{% block title %}{{ t("Users") }} · Optimum Recovery{% endblock %}
 {% block body %}
-<h2 style="margin-top:0">Users</h2>
+<h2 style="margin-top:0">{{ t("Users") }}</h2>
 {% if notice %}
 <div class="card" style="border-color:var(--green)">
   <b>{{ notice }}</b>
-  <div class="muted">Copy it now — it is stored only as a hash and can't be shown again. Send it to the person yourself.</div>
+  <div class="muted">{{ t("Copy it now — it is stored only as a hash and can't be shown again. Send it to the person yourself.") }}</div>
 </div>
 {% endif %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 
 <div class="card scroll">
   <table>
-    <tr><th>Login</th><th>Role</th><th>Email (Monday report)</th><th>Own profile</th><th>Coaches</th><th>Shared with them</th><th>Since</th><th></th></tr>
+    <tr><th>{{ t("Login") }}</th><th>{{ t("Role") }}</th><th>{{ t("Email (Monday report)") }}</th><th>{{ t("Own profile") }}</th><th>{{ t("Coaches") }}</th><th>{{ t("Shared with them") }}</th><th>{{ t("Since") }}</th><th></th></tr>
     {% for u in users %}
     <tr>
       <td>
         <form method="post" action="/users/{{ u.username }}/rename" class="row" style="flex-wrap:nowrap">
           <input name="new" value="{{ u.username }}" required pattern="[A-Za-z0-9._-]+" style="width:110px;font-weight:600"
-                 title="Change the login and press Enter">
-          {% if u.username == me.username %}<span class="muted">(you)</span>{% endif %}
+                 title="{{ t('Change the login and press Enter') }}">
+          {% if u.username == me.username %}<span class="muted">{{ t("(you)") }}</span>{% endif %}
         </form>
       </td>
       <td>
-        {% if u.username == me.username %}{{ u.role }}{% else %}
+        {% if u.username == me.username %}{{ t(u.role) }}{% else %}
         <form method="post" action="/users/{{ u.username }}/role" class="row">
           <select name="role" onchange="this.form.submit()">
-            {% for r in roles %}<option {{ 'selected' if r == u.role }}>{{ r }}</option>{% endfor %}
+            {% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == u.role }}>{{ t(r) }}</option>{% endfor %}
           </select>
         </form>
         {% endif %}
@@ -35,7 +35,7 @@
         <form method="post" action="/users/{{ u.username }}/email" class="row">
           <input name="email" type="email" value="{{ u.email or '' }}" placeholder="—" style="width:190px">
           <select name="language">{% for code, name in languages.items() %}<option value="{{ code }}" {{ 'selected' if u.language == code }}>{{ code }}</option>{% endfor %}</select>
-          <button class="plain">Save</button>{% if u.email and not u.weekly_mail %}<span class="muted">off</span>{% endif %}
+          <button class="plain">{{ t("Save") }}</button>{% if u.email and not u.weekly_mail %}<span class="muted">{{ t("off") }}</span>{% endif %}
         </form>
       </td>
       <td>{% if u.profile_id %}<a href="/athletes/{{ u.profile_id }}">{{ u.profile }}</a>{% else %}<span class="muted">—</span>{% endif %}</td>
@@ -44,13 +44,13 @@
       <td class="muted">{{ u.created_at[:10] }}</td>
       <td>
         <form method="post" action="/users/{{ u.username }}/reset" style="display:inline"
-              onsubmit="return confirm('Generate a new password for {{ u.username }}? The old one stops working.')">
-          <button class="plain">New password</button>
+              onsubmit="return confirm({{ t('Generate a new password for {username}? The old one stops working.', username=u.username)|string|tojson|forceescape }})">
+          <button class="plain">{{ t("New password") }}</button>
         </form>
         {% if u.username != me.username and u.athletes == 0 %}
         <form method="post" action="/users/{{ u.username }}/delete" style="display:inline"
-              onsubmit="return confirm('Delete login {{ u.username }}?')">
-          <button class="plain">Delete</button>
+              onsubmit="return confirm({{ t('Delete login {username}?', username=u.username)|string|tojson|forceescape }})">
+          <button class="plain">{{ t("Delete") }}</button>
         </form>
         {% endif %}
       </td>
@@ -60,17 +60,15 @@
 </div>
 
 <div class="card">
-  <h3 style="margin-top:0">Add user</h3>
+  <h3 style="margin-top:0">{{ t("Add user") }}</h3>
   <form class="row" method="post" action="/users">
-    <input name="username" placeholder="Login" required pattern="[A-Za-z0-9._-]+">
-    <select name="role"><option value="coach">coach</option><option value="athlete">athlete</option><option value="admin">admin</option></select>
-    <input name="password" placeholder="Password (empty = generate)">
-    <button>Add</button>
+    <input name="username" placeholder="{{ t('Login') }}" required pattern="[A-Za-z0-9._-]+">
+    <select name="role"><option value="coach">{{ t("coach") }}</option><option value="athlete">{{ t("athlete") }}</option><option value="admin">{{ t("admin") }}</option></select>
+    <input name="password" placeholder="{{ t('Password (empty = generate)') }}">
+    <button>{{ t("Add") }}</button>
   </form>
   <p class="muted" style="margin-bottom:0">
-    <b>admin</b> sees every athlete and manages users. <b>coach</b> sees the athletes they added and those shared with them.
-    <b>athlete</b> sees only their own profile and can set up its data source — link the login to a profile on the athlete's page.
-    A login with athletes can't be deleted — delete or hand over the athletes first.
+    {{ t("<b>admin</b> sees every athlete and manages users. <b>coach</b> sees the athletes they added and those shared with them. <b>athlete</b> sees only their own profile and can set up its data source — link the login to a profile on the athlete's page. A login with athletes can't be deleted — delete or hand over the athletes first.") }}
   </p>
 </div>
 {% endblock %}

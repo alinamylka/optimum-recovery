@@ -10,7 +10,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("USERS", "alina:s3cret")
     monkeypatch.setenv("ADMINS", "alina")
     auth._key.cache_clear()
-    return TestClient(app)
+    return TestClient(app, headers={"Accept-Language": "en"})
 
 
 def test_sign_in_page_instead_of_browser_prompt(tmp_path, monkeypatch):
@@ -137,8 +137,22 @@ def test_change_password_needs_current(tmp_path, monkeypatch):
     with client(tmp_path, monkeypatch) as c:
         _sign_in(c)
         r = c.post("/account/password", data={"current": "nope", "password": "longenough", "again": "longenough"})
-        assert "current password is wrong" in r.text
+        assert "Obecne hasło jest złe" in r.text
         c.post("/account/password", data={"current": "s3cret", "password": "longenough", "again": "longenough"})
         assert c.get("/account", follow_redirects=False).status_code == 200
         c.cookies.clear()
         assert c.post("/login", data={"username": "alina", "password": "longenough"}, follow_redirects=False).status_code == 303
+
+
+def test_pages_speak_the_login_language(tmp_path, monkeypatch):
+    from app import db
+
+    with client(tmp_path, monkeypatch) as c:
+        c.headers["Accept-Language"] = "pl-PL,pl"
+        assert "Zaloguj się" in c.get("/login").text
+        _sign_in(c)
+        db.set_language("alina", "en")
+        assert "Monday email" in c.get("/account").text
+        db.set_language("alina", "pl")
+        page = c.get("/account").text
+        assert "Poniedziałkowy mail" in page and "Wyloguj" in page

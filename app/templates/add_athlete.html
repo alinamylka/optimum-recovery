@@ -1,21 +1,19 @@
 {% extends "base.html" %}
-{% block title %}Add athlete · Optimum Recovery{% endblock %}
+{% block title %}{{ t("Add athlete") }} · Optimum Recovery{% endblock %}
 {% block body %}
 <div class="card" style="max-width:720px">
-  <h2 style="margin-top:0">Add athlete</h2>
+  <h2 style="margin-top:0">{{ t("Add athlete") }}</h2>
   <form class="row" method="post" action="/athletes">
-    <input name="name" placeholder="Name (empty: from intervals.icu)" autofocus>
-    <input name="intervals_id" placeholder="intervals.icu athlete id (optional)">
-    <input name="api_key" placeholder="intervals.icu API key (optional)" type="password">
+    <input name="name" placeholder="{{ t('Name (empty: from intervals.icu)') }}" autofocus>
+    <input name="intervals_id" placeholder="{{ t('intervals.icu athlete id (optional)') }}">
+    <input name="api_key" placeholder="{{ t('intervals.icu API key (optional)') }}" type="password">
     {% if coaches %}
-    <label>Coach <select name="coach">{% for username, name in coaches %}<option value="{{ username }}">{{ name }}</option>{% endfor %}</select></label>
+    <label>{{ t("Coach") }} <select name="coach">{% for username, name in coaches %}<option value="{{ username }}">{{ name }}</option>{% endfor %}</select></label>
     {% endif %}
-    <button>Add</button>
+    <button>{{ t("Add") }}</button>
   </form>
   <p class="muted" style="margin-bottom:0">
-    With an intervals.icu key the data syncs by itself (Settings → Developer Settings; athlete id like <code>i123456</code>, empty = the key's own account).
-    Without it, upload a TrainingPeaks or Oura export on the athlete page. The athlete doesn't need an account;
-    you can create one for them later on their page.
+    {{ t("With an intervals.icu key the data syncs by itself (Settings → Developer Settings; athlete id like <code>i123456</code>, empty = the key's own account). Without it, upload a TrainingPeaks or Oura export on the athlete page. The athlete doesn't need an account; you can create one for them later on their page.") }}
   </p>
 </div>
 {% endblock %}

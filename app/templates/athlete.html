@@ -2,33 +2,37 @@
 {% block title %}{{ athlete.name }} · Optimum Recovery{% endblock %}
 {% block body %}
 {% include "_athlete_header.html" %}
+{% macro info(key) %}<span class="info" tabindex="0" data-tip="{{ t(key) }}">i</span>{% endmacro %}
+{% set stat_tips = {"Readiness": "tip.readiness", "Fatigue debt": "tip.debt", "Days to clear (easy days)": "tip.days_to_clear",
+                    "Last full recovery": "tip.last_recovery", "HRV 7-day": "tip.hrv_week", "Normal range": "tip.normal",
+                    "CV 7-day": "tip.cv"} %}
 
 <nav class="tabs">
   {% for m in models %}
-  <a href="?model={{ m.key }}" class="{{ 'active' if m.key == model.key }}">{{ m.name }}</a>
+  <a href="?model={{ m.key }}" class="{{ 'active' if m.key == model.key }}">{{ t(m.name) }}</a>
   {% endfor %}
 </nav>
-<p class="muted">{% if model.published %}<span class="badge">Published method</span>{% else %}<span class="badge exp">Experimental</span>{% endif %}
-  {{ model.summary }} <a href="#sources">Sources ↓</a></p>
+<p class="muted">{% if model.published %}<span class="badge">{{ t("Published method") }}</span>{% else %}<span class="badge exp">{{ t("Experimental") }}</span>{% endif %}
+  {{ t(model.summary) }} <a href="#sources">{{ t("Sources ↓") }}</a></p>
 
 {% if today %}
 <div class="card">
   <div class="big"><span class="dot {{ today.signal }}"></span>{{ today.state }}</div>
   <div>{{ today.advice }}</div>
   <div class="stats">
-    <div><span>Day</span>{{ today.date }}</div>
-    {% for label, value in today.stats %}<div><span>{{ label }}</span>{{ value }}</div>{% endfor %}
+    <div><span>{{ t("Day") }}{{ info("tip.day") }}</span>{{ today.date }}</div>
+    {% for label, value in today.stats %}<div><span>{{ t(label) }}{% if label in stat_tips %}{{ info(stat_tips[label]) }}{% endif %}</span>{{ t(value) if value == "—" else value }}</div>{% endfor %}
   </div>
 </div>
 
 <div class="card"><div id="chart" style="height:{{ 860 if model.key == 'debt' else 700 }}px"></div></div>
 
 <div class="card scroll">
-  <h3 style="margin-top:0">Weeks</h3>
-  <p class="muted" style="margin-top:0">Click a week for a written summary.</p>
+  <h3 style="margin-top:0">{{ t("Weeks") }}</h3>
+  <p class="muted" style="margin-top:0">{{ t("Click a week for a written summary.") }}</p>
   <table class="weeks">
     {% if model.key == 'debt' %}
-    <tr><th>Week of</th><th>Avg readiness</th><th>Debt end</th><th>Debt max</th><th>Days</th><th>Full recovery</th></tr>
+    <tr><th>{{ t("Week of") }}</th><th>{{ t("Avg readiness") }}{{ info("tip.avg_readiness") }}</th><th>{{ t("Debt end") }}{{ info("tip.debt_end") }}</th><th>{{ t("Debt max") }}{{ info("tip.debt_max") }}</th><th>{{ t("Days") }}{{ info("tip.days") }}</th><th>{{ t("Full recovery") }}{{ info("tip.recovered") }}</th></tr>
     {% for w in weeks %}
     <tr class="week" onclick="this.nextElementSibling.hidden = !this.nextElementSibling.hidden">
       <td>{{ w.start }}</td><td>{{ w.readiness }}</td><td>{{ w.debt_end }}</td><td>{{ w.debt_max }}</td>
@@ -38,7 +42,7 @@
     <tr class="summary" hidden><td colspan="6">{{ w.description }}</td></tr>
     {% endfor %}
     {% else %}
-    <tr><th>Week of</th><th>HRV 7-day at week end</th><th>Avg CV</th><th>Days hard OK</th><th>Days easy/rest</th></tr>
+    <tr><th>{{ t("Week of") }}</th><th>{{ t("HRV 7-day at week end") }}{{ info("tip.week_hrv") }}</th><th>{{ t("Avg CV") }}{{ info("tip.avg_cv") }}</th><th>{{ t("Days hard OK") }}{{ info("tip.hard_ok") }}</th><th>{{ t("Days easy/rest") }}{{ info("tip.easy") }}</th></tr>
     {% for w in weeks %}
     <tr class="week" onclick="this.nextElementSibling.hidden = !this.nextElementSibling.hidden">
       <td>{{ w.start }}</td><td>{{ w.hrv_week }} ms</td><td>{{ w.cv }} %</td>
@@ -50,11 +54,25 @@
   </table>
 </div>
 {% else %}
-<div class="card muted">No data yet{% if configurable %} — connect intervals.icu or upload an export in <a href="/athletes/{{ athlete.id }}/settings">Settings</a>{% endif %}.</div>
+<div class="card muted">{% if configurable %}{{ t('No data yet — connect intervals.icu or upload an export in <a href="{url}">Settings</a>.', url="/athletes/" ~ athlete.id ~ "/settings") }}{% else %}{{ t("No data yet.") }}{% endif %}</div>
 {% endif %}
 
 <details class="card">
-  <summary>How to read this</summary>
+  <summary>{{ t("How to read this") }}</summary>
+  {% if lang == 'pl' %}
+  {% if model.key == 'debt' %}
+  <p><b>Gotowość</b> (−9…+9): dzisiejsze HRV, tętno spoczynkowe i stres w porównaniu z własną bazą zawodnika z 60 dni. Dodatnia = lepiej niż zwykle.</p>
+  <p><b>Dług zmęczeniowy</b>: rośnie w dni ujemne, spada w dodatnie, a gdy jest głęboki — spada wolniej. Powyżej {{ params.amber|int }} organizm przestaje na bieżąco przyswajać obciążenie (przeciążenie); powyżej {{ params.red|int }} grozi niefunkcjonalne przeciążenie. Zielona linia oznacza <b>pełną regenerację</b>: dług wrócił do zera.</p>
+  <p><b>Odbicie</b>: nagły skok HRV, gdy dług wciąż jest — często reakcja organizmu na przeciążenie, a nie świeżość.</p>
+  <p><b>Ukryty spadek</b>: tygodniowa średnia HRV jest poniżej normy, choć żaden pojedynczy dzień nie wygląda źle.</p>
+  {% else %}
+  <p><b>Górny pasek</b>: decyzja na dany dzień. Zielony = mocny trening zgodnie z planem, żółty = niska intensywność albo odpoczynek.</p>
+  <p><b>HRV</b>: kropki to dzienne pomiary, linia to 7-dniowa średnia ln(RMSSD) pokazana w ms, szary pas to norma (najmniejsza istotna zmiana, średnia ± 0,5 SD). Pas pochodzi z pierwszych 2 tygodni, potem jest przeliczany co 4 tygodnie z 4 poprzednich — dlatego zmienia się skokowo.</p>
+  <p><b>Wyjście ponad pas</b> też oznacza lekki dzień: w badaniach wysokie HRV nie jest traktowane jako „dodatkowa świeżość”.</p>
+  <p><b>CV</b>: zmienność HRV z dnia na dzień w 7 dniach (Plews 2012). Spadająca średnia przy rosnącym CV to sygnał ostrzegawczy; prace nie podają progu, więc CV nie zmienia decyzji.</p>
+  <p><b>Tętno spoczynkowe</b> jest pokazane tylko dla kontekstu; ta metoda decyduje wyłącznie na podstawie HRV.</p>
+  {% endif %}
+  {% else %}
   {% if model.key == 'debt' %}
   <p><b>Readiness</b> (−9…+9): today's HRV, resting HR and stress against the athlete's own 60-day baseline. Positive = better than usual.</p>
   <p><b>Fatigue debt</b>: builds on negative days, drains on positive ones, and drains slower once it is deep. Above {{ params.amber|int }} load is no longer absorbed day to day (overreaching); above {{ params.red|int }} there is a risk of non-functional overreaching. A green line marks a <b>full recovery</b>: the debt went back to zero.</p>
@@ -67,14 +85,15 @@
   <p><b>CV</b>: day-to-day variation of HRV over 7 days (Plews 2012). A falling average with a rising CV is a warning sign; the papers give no threshold, so it does not change the decision.</p>
   <p><b>Resting HR</b> is shown for context only; this method decides on HRV alone.</p>
   {% endif %}
-  <p class="muted">Proof of concept. Not medical advice.</p>
+  {% endif %}
+  <p class="muted">{{ t("Proof of concept. Not medical advice.") }}</p>
 </details>
 
 <div class="card" id="sources">
-  <h3 style="margin-top:0">Sources</h3>
+  <h3 style="margin-top:0">{{ t("Sources") }}</h3>
   <ol class="sources">
     {% for src in model.sources %}
-    <li>{{ src.citation }} <a href="{{ src.url }}" target="_blank" rel="noopener">doi:{{ src.doi }}</a><br><span class="muted">Used for: {{ src.used_for }}</span></li>
+    <li>{{ src.citation }} <a href="{{ src.url }}" target="_blank" rel="noopener">doi:{{ src.doi }}</a><br><span class="muted">{{ t("Used for: {what}", what=t(src.used_for)) }}</span></li>
     {% endfor %}
   </ol>
 </div>
@@ -83,6 +102,11 @@
 <script>
 const days = {{ series|tojson }};
 const modelKey = {{ model.key|tojson }};
+const L = {{ {
+  "Readiness": t("Readiness"), "readiness": t("readiness"), "Fatigue debt": t("Fatigue debt"), "HRV normal range": t("HRV normal range"),
+  "HRV 7-day": t("HRV 7-day"), "RHR normal range": t("RHR normal range"), "RHR": t("RHR"), "RHR 7-day": t("RHR 7-day"),
+  "Resting HR": t("Resting HR"), "Decision": t("Decision"), "Normal range (SWC)": t("Normal range (SWC)"), "CV 7-day (%)": t("CV 7-day (%)"),
+}|tojson }};
 if (days.length && modelKey === "debt") {
   const css = getComputedStyle(document.documentElement);
   const c = n => css.getPropertyValue('--' + n).trim();
@@ -95,14 +119,14 @@ if (days.length && modelKey === "debt") {
   ];
   const traces = [
     {x, y: days.map(d => d.readiness), type: 'bar', marker: {color: days.map(d => col(d.signal))},
-     text: days.map(d => d.state), hovertemplate: '%{x}<br>readiness %{y}<br>%{text}<extra></extra>', name: 'Readiness', yaxis: 'y'},
-    {x, y: days.map(d => d.debt), yaxis: 'y2', mode: 'lines', fill: 'tozeroy', line: {color: '#888', width: 2}, name: 'Fatigue debt'},
-    ...band('hrv_low', 'hrv_high', 'y3', 'HRV normal range'),
+     text: days.map(d => d.state), hovertemplate: '%{x}<br>' + L['readiness'] + ' %{y}<br>%{text}<extra></extra>', name: L['Readiness'], yaxis: 'y'},
+    {x, y: days.map(d => d.debt), yaxis: 'y2', mode: 'lines', fill: 'tozeroy', line: {color: '#888', width: 2}, name: L['Fatigue debt']},
+    ...band('hrv_low', 'hrv_high', 'y3', L['HRV normal range']),
     {x, y: days.map(d => d.hrv), yaxis: 'y3', mode: 'markers', marker: {size: 4, color: c('accent'), opacity: .45}, name: 'HRV'},
-    {x, y: days.map(d => d.hrv_week), yaxis: 'y3', mode: 'lines', line: {color: c('accent')}, name: 'HRV 7-day'},
-    ...band('rhr_low', 'rhr_high', 'y4', 'RHR normal range'),
-    {x, y: days.map(d => d.rhr), yaxis: 'y4', mode: 'markers', marker: {size: 4, color: c('red'), opacity: .45}, name: 'RHR'},
-    {x, y: days.map(d => d.rhr_week), yaxis: 'y4', mode: 'lines', line: {color: c('red')}, name: 'RHR 7-day'},
+    {x, y: days.map(d => d.hrv_week), yaxis: 'y3', mode: 'lines', line: {color: c('accent')}, name: L['HRV 7-day']},
+    ...band('rhr_low', 'rhr_high', 'y4', L['RHR normal range']),
+    {x, y: days.map(d => d.rhr), yaxis: 'y4', mode: 'markers', marker: {size: 4, color: c('red'), opacity: .45}, name: L['RHR']},
+    {x, y: days.map(d => d.rhr_week), yaxis: 'y4', mode: 'lines', line: {color: c('red')}, name: L['RHR 7-day']},
   ];
   const hline = (y, color, axis) => ({type: 'line', xref: 'paper', x0: 0, x1: 1, yref: axis, y0: y, y1: y, line: {color, dash: 'dash', width: 1}});
   const shapes = [hline({{ params.amber }}, c('amber'), 'y2'), hline({{ params.red }}, c('red'), 'y2'),
@@ -113,10 +137,10 @@ if (days.length && modelKey === "debt") {
     paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: c('text')},
     margin: {l: 60, r: 10, t: 10, b: 30}, showlegend: false, hovermode: 'x unified', shapes,
     xaxis: {gridcolor: c('line')},
-    yaxis: {...axis([0.79, 1], 'Readiness'), range: [-9.5, 9.5]},
-    yaxis2: {...axis([0.53, 0.75], 'Fatigue debt'), rangemode: 'tozero'},
+    yaxis: {...axis([0.79, 1], L['Readiness']), range: [-9.5, 9.5]},
+    yaxis2: {...axis([0.53, 0.75], L['Fatigue debt']), rangemode: 'tozero'},
     yaxis3: axis([0.27, 0.49], 'HRV (ms)'),
-    yaxis4: axis([0, 0.23], 'Resting HR'),
+    yaxis4: axis([0, 0.23], L['Resting HR']),
   }, {responsive: true, displaylogo: false});
 }
 if (days.length && modelKey !== "debt") {
@@ -126,15 +150,15 @@ if (days.length && modelKey !== "debt") {
   const col = s => ({green: c('green'), amber: c('amber')}[s] || c('line'));
   const traces = [
     {x, y: days.map(d => d.signal ? 1 : 0), type: 'bar', marker: {color: days.map(d => col(d.signal))},
-     text: days.map(d => d.state), hovertemplate: '%{x}<br>%{text}<extra></extra>', yaxis: 'y', name: 'Decision'},
+     text: days.map(d => d.state), hovertemplate: '%{x}<br>%{text}<extra></extra>', yaxis: 'y', name: L['Decision']},
     {x, y: days.map(d => d.hrv_low), yaxis: 'y2', mode: 'lines', line: {width: 0, shape: 'hv'}, hoverinfo: 'skip'},
     {x, y: days.map(d => d.hrv_high), yaxis: 'y2', mode: 'lines', line: {width: 0, shape: 'hv'}, fill: 'tonexty',
-     fillcolor: 'rgba(128,128,128,0.22)', name: 'Normal range (SWC)'},
+     fillcolor: 'rgba(128,128,128,0.22)', name: L['Normal range (SWC)']},
     {x, y: days.map(d => d.hrv), yaxis: 'y2', mode: 'markers', marker: {size: 4, color: c('accent'), opacity: .4}, name: 'HRV'},
     {x, y: days.map(d => d.hrv_week), yaxis: 'y2', mode: 'lines+markers', line: {color: c('accent')},
-     marker: {size: 5, color: days.map(d => col(d.signal))}, name: 'HRV 7-day'},
-    {x, y: days.map(d => d.cv), yaxis: 'y3', mode: 'lines', line: {color: '#8a63d2'}, name: 'CV 7-day (%)'},
-    {x, y: days.map(d => d.rhr), yaxis: 'y4', mode: 'markers', marker: {size: 4, color: c('red'), opacity: .5}, name: 'Resting HR'},
+     marker: {size: 5, color: days.map(d => col(d.signal))}, name: L['HRV 7-day']},
+    {x, y: days.map(d => d.cv), yaxis: 'y3', mode: 'lines', line: {color: '#8a63d2'}, name: L['CV 7-day (%)']},
+    {x, y: days.map(d => d.rhr), yaxis: 'y4', mode: 'markers', marker: {size: 4, color: c('red'), opacity: .5}, name: L['Resting HR']},
   ];
   const axis = (domain, title) => ({domain, title: {text: title}, gridcolor: c('line'), zerolinecolor: c('line')});
   Plotly.newPlot('chart', traces, {
@@ -144,7 +168,7 @@ if (days.length && modelKey !== "debt") {
     yaxis: {...axis([0.92, 1], ''), showticklabels: false, range: [0, 1]},
     yaxis2: axis([0.42, 0.88], 'HRV (ms)'),
     yaxis3: {...axis([0.22, 0.38], 'CV %'), rangemode: 'tozero'},
-    yaxis4: axis([0, 0.18], 'Resting HR'),
+    yaxis4: axis([0, 0.18], L['Resting HR']),
   }, {responsive: true, displaylogo: false});
 }
 </script>
