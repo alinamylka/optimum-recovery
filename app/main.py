@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import auth, db, describe, i18n, mailer, models
+from . import auth, db, describe, hrv_guided, i18n, mailer, models
 from .auth import Login
 from .model import Params, params_dict
 from .sources import fetch_intervals, fetch_intervals_name, fetch_intervals_profile, parse_export
@@ -441,6 +441,9 @@ def _athlete_page(
             "weeks": _weeks(result, me.language),
             "params": Params(),
             "lines": result.iloc[-1][["fo", "limit", "danger"]].to_dict() if "danger" in result else None,
+            # Days with HRV so far: until there are two weeks of them both models are still building a baseline.
+            "hrv_days": int(data["hrv"].notna().sum()) if "hrv" in data else 0,
+            "baseline_days": hrv_guided.BASELINE_DAYS,
             "error": error,
             "notice": notice,
             "mine": is_coach,

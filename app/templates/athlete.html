@@ -54,7 +54,7 @@
   </table>
 </div>
 {% else %}
-<div class="card muted">{% if configurable %}{{ t('No data yet — connect intervals.icu or upload an export in <a href="{url}">Settings</a>.', url="/athletes/" ~ athlete.id ~ "/settings") }}{% else %}{{ t("No data yet.") }}{% endif %}</div>
+<div class="card muted">{% if hrv_days %}{{ t("Building the baseline: {days} of {needed} days with HRV so far. The first signals come once there are {needed}.", days=hrv_days, needed=baseline_days) }}{% elif configurable %}{{ t('No data yet — connect intervals.icu or upload an export in <a href="{url}">Settings</a>.', url="/athletes/" ~ athlete.id ~ "/settings") }}{% else %}{{ t("No data yet.") }}{% endif %}</div>
 {% endif %}
 
 {% include "_how_to_read.html" %}

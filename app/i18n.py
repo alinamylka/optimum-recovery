@@ -121,6 +121,8 @@ PL: dict[str, str] = {
     "No data yet — connect intervals.icu or upload an export in <a href=\"{url}\">Settings</a>.":
         "Brak danych — podłącz intervals.icu albo wgraj eksport w <a href=\"{url}\">Ustawieniach</a>.",
     "No data yet.": "Brak danych.",
+    "Building the baseline: {days} of {needed} days with HRV so far. The first signals come once there are {needed}.":
+        "Zbieramy bazę: na razie {days} z {needed} dni z HRV. Pierwsze sygnały pojawią się, gdy będzie ich {needed}.",
     "How to read this": "Jak to czytać",
     "Proof of concept. Not medical advice.": "Wersja testowa. To nie jest porada medyczna.",
     "HRV-guided training (Javaloyes 2020)": "Trening sterowany HRV (Javaloyes 2020)",
