@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .model import Params
-
 LANGUAGES = {"pl": "Polski", "en": "English"}
 DEFAULT = "pl"
 
@@ -19,7 +17,8 @@ STATES = {
     "Above the normal range": "Powyżej normy",
     "Danger: NFO risk": "Niebezpiecznie: ryzyko NFO",
     "Rebound: HRV spike while in debt": "Odbicie: skok HRV mimo długu",
-    "Overreaching": "Przeciążenie",
+    "Functional overreaching": "Przeciążenie funkcjonalne",
+    "Past the adaptation limit": "Ponad granicą adaptacji",
     "Chronic creep: HRV trending low": "Pełzające zmęczenie: HRV nisko",
     "Fresh": "Świeżość",
     "Absorbing load": "Obciążenie przyswajane",
@@ -50,7 +49,7 @@ def advice(model_key: str, signal: str, english: str, lang: str) -> str:
 def week(week: pd.DataFrame, previous: pd.DataFrame | None, lang: str = DEFAULT) -> str:
     t = _PL if lang == "pl" else _EN
     if "debt" in week:
-        return _debt_week(week, previous, Params(), t)
+        return _debt_week(week, previous, t)
     return _hrv_week(week, previous, t)
 
 
@@ -77,8 +76,16 @@ _EN = {
     "built": "built up",
     "down": "came down",
     "steady": "held steady",
-    "red": "{days} above {red:.0f} — deep enough to risk non-functional overreaching; only easy training until it drains. ",
-    "amber": "{days} between {amber:.0f} and {red:.0f}: overreaching, load no longer absorbed day to day. ",
+    "red": "{days} above the danger threshold ({red:.0f}) — deep enough to risk non-functional overreaching, injury or "
+    "illness; only easy training until it drains. ",
+    "limit": "{days} past the adaptation limit ({limit:.0f}): the body was no longer adapting but paying for the load "
+    "— ease off before it reaches {red:.0f}. ",
+    "amber": "{days} of functional overreaching ({amber:.0f}–{limit:.0f}): a productive stimulus, as long as a full "
+    "recovery follows. ",
+    "capacity_up": "The personal thresholds went up (danger {before:.0f} → {after:.0f}): the athlete came back quickly "
+    "from the last block — the body adapted and can take a little more. ",
+    "capacity_down": "The personal thresholds went down (danger {before:.0f} → {after:.0f}): the debt stayed high too "
+    "long or recovery dragged, so the load cost more than the body had — a lighter next block is advised. ",
     "rebound": "HRV spiked while still in debt — read as a reaction to overload, not freshness. ",
     "creep": "The weekly HRV sat below normal although no single day looked bad (chronic creep). ",
     "recovered": "Full recovery on {day}: the debt cleared — a good point to start the next block. ",
@@ -122,9 +129,17 @@ _PL = {
     "built": "narósł",
     "down": "zmalał",
     "steady": "bez większych zmian",
-    "red": "{days} powyżej {red:.0f} — na tyle głęboko, że grozi przeciążeniem niefunkcjonalnym; "
-    "tylko lekki trening, aż dług spadnie. ",
-    "amber": "{days} między {amber:.0f} a {red:.0f}: przeciążenie, organizm nie nadąża z bieżącym obciążeniem. ",
+    "red": "{days} powyżej progu niebezpiecznego ({red:.0f}) — na tyle głęboko, że grozi przeciążeniem "
+    "niefunkcjonalnym, kontuzją albo chorobą; tylko lekki trening, aż dług spadnie. ",
+    "limit": "{days} ponad granicą adaptacji ({limit:.0f}): organizm już się nie przystosowywał, tylko płacił za "
+    "obciążenie — zaleca się odpuścić, zanim dojdzie do {red:.0f}. ",
+    "amber": "{days} przeciążenia funkcjonalnego ({amber:.0f}–{limit:.0f}): to dobry bodziec, o ile po nim przyjdzie "
+    "pełna regeneracja. ",
+    "capacity_up": "Osobiste progi wzrosły (próg niebezpieczny {before:.0f} → {after:.0f}): zawodnik szybko wrócił "
+    "po ostatnim bloku — organizm się zaadaptował i zniesie trochę więcej. ",
+    "capacity_down": "Osobiste progi spadły (próg niebezpieczny {before:.0f} → {after:.0f}): dług za długo trzymał "
+    "się wysoko albo regeneracja się ciągnęła, więc obciążenie kosztowało więcej, niż organizm miał — kolejny blok "
+    "zaleca się lżejszy. ",
     "rebound": "HRV skoczyło mimo długu — to raczej reakcja na przeciążenie niż świeżość. ",
     "creep": "Tygodniowe HRV było poniżej normy, choć żaden pojedynczy dzień nie wyglądał źle (pełzające zmęczenie). ",
     "recovered": "Pełna regeneracja {day}: dług się wyzerował — dobry moment na start kolejnego bloku. ",
@@ -231,7 +246,7 @@ def _hrv_week(w: pd.DataFrame, previous: pd.DataFrame | None, t: dict) -> str:
     return "".join(parts).strip()
 
 
-def _debt_week(w: pd.DataFrame, previous: pd.DataFrame | None, p: Params, t: dict) -> str:
+def _debt_week(w: pd.DataFrame, previous: pd.DataFrame | None, t: dict) -> str:
     parts = [_coverage(w, t)]
     readiness = w["readiness"].mean()
     feel = t["better"] if readiness >= 1 else (t["worse"] if readiness <= -1 else t["usual"])
@@ -245,12 +260,20 @@ def _debt_week(w: pd.DataFrame, previous: pd.DataFrame | None, p: Params, t: dic
         direction = t["built"] if end > start + 1 else (t["down"] if end < start - 1 else t["steady"])
         parts.append(t["debt"].format(direction=direction, start=start, end=end, peak=peak))
 
-    red = int((w["debt"] >= p.red).sum())
-    amber = int(((w["debt"] >= p.amber) & (w["debt"] < p.red)).sum())
-    if red:
-        parts.append(t["red"].format(days=t["days"](red).capitalize(), red=p.red))
-    if amber:
-        parts.append(t["amber"].format(days=t["days"](amber).capitalize(), amber=p.amber, red=p.red))
+    # Each day against the personal lines as they stood that day; the text quotes the week's last ones.
+    lines = {"amber": w["fo"].iloc[-1], "limit": w["limit"].iloc[-1], "red": w["danger"].iloc[-1]}
+    zones = {
+        "red": w["debt"] >= w["danger"],
+        "limit": (w["debt"] >= w["limit"]) & (w["debt"] < w["danger"]),
+        "amber": (w["debt"] >= w["fo"]) & (w["debt"] < w["limit"]),
+    }
+    for zone, days in zones.items():
+        if days.any():
+            parts.append(t[zone].format(days=t["days"](int(days.sum())).capitalize(), **lines))
+    before = w["danger"].iloc[0]
+    after = before + w["capacity_change"].sum()
+    if abs(after - before) >= 0.5:
+        parts.append(t["capacity_up" if after > before else "capacity_down"].format(before=before, after=after))
     states = w["state"].value_counts()
     warned = False
     if states.get("Rebound: HRV spike while in debt"):
@@ -262,6 +285,6 @@ def _debt_week(w: pd.DataFrame, previous: pd.DataFrame | None, p: Params, t: dic
     if w["recovered"].any():
         day = w.index[w["recovered"]][-1]
         parts.append(t["recovered"].format(day=f"{day:%d.%m}"))
-    elif peak < p.amber and not warned:
+    elif not (w["debt"] >= w["fo"]).any() and not warned:
         parts.append(t["absorbed"])
     return "".join(parts).strip()

@@ -127,13 +127,14 @@ PL: dict[str, str] = {
     "Fatigue debt (experimental)": "Dług zmęczeniowy (eksperymentalny)",
     "Published method tested in cyclists: train hard when the 7-day HRV average is inside the athlete's normal range, easy or rest when it is outside — above or below.":
         "Opublikowana metoda sprawdzona na kolarzach: mocny trening, gdy 7-dniowa średnia HRV jest w normie zawodnika; lekko albo odpoczynek, gdy wychodzi poza nią — w górę lub w dół.",
-    "Own model, not published or validated: readiness from HRV, resting HR and stress, and a fatigue debt that builds and clears. The ideas come from the papers below; the formula, weights and thresholds (12 / 25, taken from Arkadiusz's charts) do not.":
-        "Własny model, nieopublikowany i niezwalidowany: gotowość z HRV, tętna spoczynkowego i stresu oraz dług zmęczeniowy, który narasta i spada. Pomysły pochodzą z prac poniżej; wzór, wagi i progi (12 / 25, z wykresów Arkadiusza) już nie.",
+    "Own model, not published or validated: readiness from HRV, resting HR and stress, a fatigue debt that builds and clears, and personal thresholds learnt from how the athlete recovers. The ideas come from the papers below; the formula, weights and threshold rules do not.":
+        "Własny model, nieopublikowany i niezwalidowany: gotowość z HRV, tętna spoczynkowego i stresu, dług zmęczeniowy, który narasta i spada, oraz osobiste progi wyliczane z tego, jak zawodnik się regeneruje. Pomysły pochodzą z prac poniżej; wzór, wagi i zasady progów już nie.",
     # Today's stats
     "Readiness": "Gotowość",
     "Fatigue debt": "Dług zmęczeniowy",
     "Days to clear (easy days)": "Dni do spłaty (lekkie dni)",
     "Last full recovery": "Ostatnia pełna regeneracja",
+    "Personal thresholds": "Osobiste progi",
     "HRV 7-day": "HRV 7-dniowe",
     "Normal range": "Norma",
     "CV 7-day": "CV 7-dniowe",
@@ -147,7 +148,11 @@ PL: dict[str, str] = {
     "tip.easy": "Dni, w których średnia była poza normą (poniżej lub powyżej): zaleca się wtedy lekki trening albo odpoczynek.",
     "tip.week_hrv": "7-dniowa średnia HRV w ostatnim dniu tygodnia.",
     "tip.readiness": "Gotowość od −9 do +9: dzisiejsze HRV, tętno spoczynkowe i stres w porównaniu z własną bazą z 60 dni. Dodatnia = lepiej niż zwykle.",
-    "tip.debt": "Dług zmęczeniowy: rośnie w gorsze dni, spada w lepsze. Powyżej 12 organizm nie nadąża z regeneracją, powyżej 25 grozi przetrenowanie.",
+    "tip.debt": "Dług zmęczeniowy: rośnie w gorsze dni, spada w lepsze. Czytaj go względem osobistych progów obok — ten sam dług dla jednej osoby jest zdrowym bodźcem, dla innej już przeciążeniem.",
+    "tip.thresholds": "Osobiste progi długu: przeciążenie funkcjonalne / granica adaptacji / próg niebezpieczny. Do granicy adaptacji organizm się przystosowuje i rośnie, powyżej zaczyna płacić zdrowiem, powyżej progu niebezpiecznego grozi kontuzja lub choroba. Progi rosną, gdy zawodnik szybko wraca po mocnym bloku, i maleją, gdy regeneracja się ciągnie.",
+    "Functional overreaching": "Przeciążenie funkcjonalne",
+    "Adaptation limit": "Granica adaptacji",
+    "Danger threshold": "Próg niebezpieczny",
     "tip.days_to_clear": "Ile lekkich dni potrzeba, żeby dług spadł do zera przy obecnym tempie.",
     "tip.last_recovery": "Ostatni dzień, w którym dług zmęczeniowy wrócił do zera.",
     "tip.avg_readiness": "Średnia gotowość w tym tygodniu.",
@@ -279,6 +284,8 @@ PL: dict[str, str] = {
     "Idea of fatigue that accumulates and decays exponentially.": "Pomysł zmęczenia, które narasta i wygasa wykładniczo.",
     "Definitions of functional and non-functional overreaching.": "Definicje funkcjonalnego i niefunkcjonalnego przeciążenia.",
     "HRV can rise under overload: the 'rebound' warning.": "HRV może rosnąć przy przeciążeniu: ostrzeżenie o „odbiciu”.",
+    "Allostatic load: past a personal limit, coping with stress starts to wear the body down — the adaptation limit.":
+        "Obciążenie allostatyczne: powyżej osobistej granicy radzenie sobie ze stresem zaczyna wyniszczać organizm — granica adaptacji.",
 }
 
 
@@ -293,7 +300,8 @@ EN: dict[str, str] = {
     "tip.easy": "Days when the average was outside the range (below or above): easy training or rest is advised.",
     "tip.week_hrv": "The 7-day HRV average on the last day of the week.",
     "tip.readiness": "Readiness from −9 to +9: today's HRV, resting HR and stress against your own 60-day baseline. Positive = better than usual.",
-    "tip.debt": "Fatigue debt: grows on worse days, falls on better ones. Above 12 the body no longer keeps up; above 25 there is a risk of overtraining.",
+    "tip.debt": "Fatigue debt: grows on worse days, falls on better ones. Read it against the personal thresholds next to it — the same debt is a healthy stimulus for one athlete and overload for another.",
+    "tip.thresholds": "Personal debt thresholds: functional overreaching / adaptation limit / danger. Up to the adaptation limit the body adapts and grows; past it, it starts paying with its health; past danger, injury or illness are likely. The thresholds rise when the athlete comes back quickly from a hard block and fall when recovery drags.",
     "tip.days_to_clear": "How many easy days it takes for the debt to reach zero at the current rate.",
     "tip.last_recovery": "The last day the fatigue debt went back to zero.",
     "tip.avg_readiness": "Average readiness this week.",

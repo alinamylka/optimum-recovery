@@ -1,6 +1,7 @@
 <details class="card guide">
   <summary>{{ t("How to read this") }}</summary>
 {% if model.key == 'debt' %}
+{% set fo = (lines.fo if lines else params.amber)|round|int %}{% set limit = (lines.limit if lines else params.red * params.limit_share)|round|int %}{% set danger = (lines.danger if lines else params.red)|round|int %}
 {% if lang == 'pl' %}
   <p class="lead">Dług zmęczeniowy to własny, eksperymentalny wskaźnik: ile zmęczenia się nazbierało i czy organizm nadąża z regeneracją.</p>
 
@@ -18,15 +19,27 @@
     <li><b>Dzień ujemny</b> dokłada do długu — im gorzej, tym więcej.</li>
     <li><b>Dzień dodatni</b> spłaca dług.</li>
     <li><b>Dzień neutralny</b> — dług sam maleje o ok. 8%, zmęczenie wygasa.</li>
-    <li><b>Głęboki dług</b> (powyżej {{ params.red|int }}) spłaca się wolniej: wyczerpany organizm regeneruje się mniej na każdy dobry dzień.</li>
+    <li><b>Głęboki dług</b> (powyżej progu niebezpiecznego) spłaca się wolniej: wyczerpany organizm regeneruje się mniej na każdy dobry dzień.</li>
   </ul>
 
-  <h4>Progi</h4>
+  <h4>Osobiste progi</h4>
+  <p>Ten sam dług dla jednej osoby jest zdrowym bodźcem, dla innej już przeciążeniem — dlatego każdy zawodnik ma własne progi, wyliczane z jego danych. Na wykresie długu to trzy przerywane linie{% if lines %}; dziś: <b>{{ fo }} / {{ limit }} / {{ danger }}</b>{% endif %}.</p>
   <div class="levels">
-    <div class="level"><span class="dot green"></span><b>0 – {{ params.amber|int }}</b><span>Obciążenie przyswajane na bieżąco. 0 = pełna regeneracja (zielona pionowa linia na wykresie).</span></div>
-    <div class="level"><span class="dot amber"></span><b>{{ params.amber|int }} – {{ params.red|int }}</b><span>Organizm nie nadąża, zaczyna się przeciążenie. Trenuj spokojnie, bez dokładania obciążenia.</span></div>
-    <div class="level"><span class="dot red"></span><b>powyżej {{ params.red|int }}</b><span>Grozi przeciążenie niefunkcjonalne, z którego wychodzi się tygodniami. Tylko lekko albo odpoczynek.</span></div>
+    <div class="level"><span class="dot green"></span><b>0 – {{ fo }}</b><span>Obciążenie przyswajane na bieżąco. 0 = pełna regeneracja (zielona pionowa linia na wykresie).</span></div>
+    <div class="level"><span class="dot amber"></span><b>{{ fo }} – {{ limit }}</b><span><b>Przeciążenie funkcjonalne.</b> Dobry bodziec: organizm się przystosowuje i rośnie — pod warunkiem, że potem przyjdzie pełna regeneracja. To strefa, w której trenuje się, żeby progi rosły.</span></div>
+    <div class="level"><span class="dot amber"></span><b>{{ limit }} – {{ danger }}</b><span><b>Ponad granicą adaptacji.</b> Obciążenie allostatyczne: koszt utrzymania równowagi przewyższa zyski i organizm zaczyna się degradować zamiast rosnąć. Trenuj spokojnie, bez dokładania obciążenia.</span></div>
+    <div class="level"><span class="dot red"></span><b>&gt; {{ danger }}</b><span><b>Ponad progiem niebezpiecznym.</b> Koszt przekracza zasoby organizmu: oszczędza on na wzroście, regeneracji i naprawie, a stąd blisko do kontuzji, choroby i przeciążenia niefunkcjonalnego. Tylko lekko albo odpoczynek.</span></div>
   </div>
+
+  <h4>Jak zmieniają się progi</h4>
+  <ul>
+    <li><b>Start:</b> próg niebezpieczny {{ params.red|int }} dla wszystkich, potem progi uczą się z tego, jak zawodnik wychodzi z kolejnych bloków. Granica adaptacji to zawsze {{ (params.limit_share * 100)|round|int }}% progu niebezpiecznego, przeciążenie funkcjonalne {{ (params.amber / params.red * 100)|round|int }}%.</li>
+    <li><b>Szybki powrót</b> — blok przekroczył próg przeciążenia funkcjonalnego, a dług wrócił do zera najwyżej w {{ params.fast_recovery|int }}× tyle dni, ile zajęłyby same lekkie dni: organizm się zaadaptował, progi rosną.</li>
+    <li><b>Powolny powrót</b> — ponad {{ params.slow_recovery|int }}× dłużej: blok kosztował więcej, niż organizm miał, progi spadają.</li>
+    <li><b>Przeciągnięte przeciążenie</b> — ponad {{ params.linger_days }} dni z rzędu powyżej progu przeciążenia funkcjonalnego: progi spadają o {{ (params.linger_loss * 100)|round|int }}% dziennie.</li>
+    <li><b>Niewykorzystana pojemność</b> — to, co zawodnik zyskał ponad start, powoli wygasa w dni bez długu.</li>
+  </ul>
+  <p>Spadające progi to sygnał, że trening był za ciężki dla tego organizmu: kolejne bloki zaleca się lżejsze, a obciążenie zwiększać dopiero, gdy progi znów zaczną rosnąć.</p>
 
   <h4>Na co uważać</h4>
   <div class="warnings">
@@ -34,7 +47,7 @@
     <div><b>Ukryty spadek</b><span>Tygodniowa średnia HRV poniżej normy, choć żaden pojedynczy dzień nie wygląda źle.</span></div>
   </div>
 
-  <p class="muted small">Podstawy: zmęczenie, które narasta i wygasa (Banister i Calvert 1976), definicje przeciążenia (Meeusen 2013), odbicie HRV (Le Meur 2013). Wzór, wagi i progi {{ params.amber|int }} / {{ params.red|int }} (z wykresów Arkadiusza) są własne i wymagają kalibracji — stąd „eksperymentalny”.</p>
+  <p class="muted small">Podstawy: zmęczenie, które narasta i wygasa (Banister i Calvert 1976), definicje przeciążenia (Meeusen 2013), odbicie HRV (Le Meur 2013), obciążenie allostatyczne i granica adaptacji (McEwen 1998). Wzór, wagi i zasady, według których progi rosną i maleją, są własne i wymagają kalibracji — stąd „eksperymentalny”.</p>
 {% else %}
   <p class="lead">Fatigue debt is our own, experimental measure: how much fatigue has built up and whether the body keeps up with recovery.</p>
 
@@ -52,15 +65,27 @@
     <li><b>A negative day</b> adds to the debt — the worse, the more.</li>
     <li><b>A positive day</b> pays it off.</li>
     <li><b>A neutral day</b> — the debt shrinks by about 8% on its own, fatigue fades.</li>
-    <li><b>A deep debt</b> (above {{ params.red|int }}) clears more slowly: an exhausted body recovers less per good day.</li>
+    <li><b>A deep debt</b> (above the danger threshold) clears more slowly: an exhausted body recovers less per good day.</li>
   </ul>
 
-  <h4>Thresholds</h4>
+  <h4>Personal thresholds</h4>
+  <p>The same debt is a healthy stimulus for one athlete and overload for another, so each athlete gets their own thresholds, learnt from their data. They are the three dashed lines on the debt chart{% if lines %}; today: <b>{{ fo }} / {{ limit }} / {{ danger }}</b>{% endif %}.</p>
   <div class="levels">
-    <div class="level"><span class="dot green"></span><b>0 – {{ params.amber|int }}</b><span>Load absorbed day to day. 0 = full recovery (green vertical line on the chart).</span></div>
-    <div class="level"><span class="dot amber"></span><b>{{ params.amber|int }} – {{ params.red|int }}</b><span>The body no longer keeps up, overreaching starts. Train calmly, add no load.</span></div>
-    <div class="level"><span class="dot red"></span><b>above {{ params.red|int }}</b><span>Risk of non-functional overreaching, which takes weeks to come out of. Easy only, or rest.</span></div>
+    <div class="level"><span class="dot green"></span><b>0 – {{ fo }}</b><span>Load absorbed day to day. 0 = full recovery (green vertical line on the chart).</span></div>
+    <div class="level"><span class="dot amber"></span><b>{{ fo }} – {{ limit }}</b><span><b>Functional overreaching.</b> A good stimulus: the body adapts and grows — as long as a full recovery follows. This is the zone to train in to raise the thresholds.</span></div>
+    <div class="level"><span class="dot amber"></span><b>{{ limit }} – {{ danger }}</b><span><b>Past the adaptation limit.</b> Allostatic load: the cost of keeping the balance outweighs the gains and the body starts to wear down instead of growing. Train calmly, add no load.</span></div>
+    <div class="level"><span class="dot red"></span><b>&gt; {{ danger }}</b><span><b>Past danger.</b> The cost exceeds what the body has: it cuts back on growth, recovery and repair, which leads towards injury, illness and non-functional overreaching. Easy only, or rest.</span></div>
   </div>
+
+  <h4>How the thresholds move</h4>
+  <ul>
+    <li><b>Start:</b> danger at {{ params.red|int }} for everyone; from then on the thresholds learn from how the athlete comes out of each block. The adaptation limit is always {{ (params.limit_share * 100)|round|int }}% of danger, functional overreaching {{ (params.amber / params.red * 100)|round|int }}%.</li>
+    <li><b>Quick recovery</b> — a block went past functional overreaching and the debt was back to zero within {{ params.fast_recovery|int }}× the days easy days alone would take: the body adapted, the thresholds rise.</li>
+    <li><b>Slow recovery</b> — more than {{ params.slow_recovery|int }}× as long: the block cost more than the body had, the thresholds fall.</li>
+    <li><b>Drawn-out overload</b> — more than {{ params.linger_days }} days in a row past functional overreaching: the thresholds fall by {{ (params.linger_loss * 100)|round|int }}% a day.</li>
+    <li><b>Unused capacity</b> — whatever was gained above the start slowly fades on days without debt.</li>
+  </ul>
+  <p>Falling thresholds say the training was too hard for this body: lighter blocks are advised, adding load only once the thresholds start rising again.</p>
 
   <h4>Watch out for</h4>
   <div class="warnings">
@@ -68,7 +93,7 @@
     <div><b>Chronic creep</b><span>The weekly HRV average sits below normal although no single day looks bad.</span></div>
   </div>
 
-  <p class="muted small">Foundations: fatigue that builds and fades (Banister & Calvert 1976), definitions of overreaching (Meeusen 2013), HRV rebound (Le Meur 2013). The formula, weights and the {{ params.amber|int }} / {{ params.red|int }} thresholds (from Arkadiusz's charts) are our own and need calibrating — hence "experimental".</p>
+  <p class="muted small">Foundations: fatigue that builds and fades (Banister & Calvert 1976), definitions of overreaching (Meeusen 2013), HRV rebound (Le Meur 2013), allostatic load and the adaptation limit (McEwen 1998). The formula, weights and the rules by which the thresholds rise and fall are our own and need calibrating — hence "experimental".</p>
 {% endif %}
 {% else %}
 {% if lang == 'pl' %}

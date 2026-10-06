@@ -440,6 +440,7 @@ def _athlete_page(
             "series": _series(result),
             "weeks": _weeks(result, me.language),
             "params": Params(),
+            "lines": result.iloc[-1][["fo", "limit", "danger"]].to_dict() if "danger" in result else None,
             "error": error,
             "notice": notice,
             "mine": is_coach,
@@ -733,6 +734,7 @@ def _latest(m: models.Model, result: pd.DataFrame, lang: str = "en") -> dict | N
             ("Fatigue debt", row["debt"]),
             ("Days to clear (easy days)", f"≈ {int(row['days_to_clear'])}" if row["days_to_clear"] else "—"),
             ("Last full recovery", _last_recovery(result) or "—"),
+            ("Personal thresholds", f"{row['fo']:.0f} / {row['limit']:.0f} / {row['danger']:.0f}"),
         ]
     else:
         stats = [

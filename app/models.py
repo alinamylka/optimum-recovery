@@ -80,6 +80,11 @@ LE_MEUR_2013 = Source(
     "10.1249/MSS.0b013e3182980125",
     "HRV can rise under overload: the 'rebound' warning.",
 )
+MCEWEN_1998 = Source(
+    "McEwen BS. Protective and damaging effects of stress mediators. N Engl J Med. 1998;338(3):171-179.",
+    "10.1056/NEJM199801153380307",
+    "Allostatic load: past a personal limit, coping with stress starts to wear the body down — the adaptation limit.",
+)
 
 MODELS = {
     m.key: m
@@ -98,12 +103,12 @@ MODELS = {
             key="debt",
             name="Fatigue debt (experimental)",
             published=False,
-            summary="Own model, not published or validated: readiness from HRV, resting HR and stress, and a "
-            "fatigue debt that builds and clears. The ideas come from the papers below; the formula, weights "
-            "and thresholds (12 / 25, taken from Arkadiusz's charts) do not.",
+            summary="Own model, not published or validated: readiness from HRV, resting HR and stress, a fatigue "
+            "debt that builds and clears, and personal thresholds learnt from how the athlete recovers. The "
+            "ideas come from the papers below; the formula, weights and threshold rules do not.",
             analyse=model.analyse,
             advice=model.SIGNALS,
-            sources=(PLEWS_2013, CALVERT_1976, MEEUSEN_2013, LE_MEUR_2013),
+            sources=(PLEWS_2013, CALVERT_1976, MEEUSEN_2013, LE_MEUR_2013, MCEWEN_1998),
         ),
     )
 }

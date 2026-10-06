@@ -30,6 +30,39 @@ def test_overload_builds_debt_and_then_clears():
     assert result["debt"].iloc[-1] < 1
 
 
+def test_quick_recovery_raises_the_personal_thresholds():
+    data = steady(160)
+    data.iloc[60:68, 0] -= 12  # a short hard block, then back to normal
+    data.iloc[60:68, 1] += 4
+    result = analyse(data)
+    start = Params().red
+    assert result["debt"].iloc[60:75].max() > start * Params().amber / Params().red  # it went past FO
+    assert result["danger"].iloc[-1] > start
+    assert (result["fo"] / result["danger"]).round(2).eq(round(Params().amber / Params().red, 2)).all()
+
+
+def test_drawn_out_overload_lowers_the_personal_thresholds():
+    data = steady(200)
+    data.iloc[60:130, 0] -= 10  # weeks of suppressed HRV without a way back
+    data.iloc[60:130, 1] += 4
+    result = analyse(data)
+    assert result["danger"].iloc[129] < Params().red
+    assert result["danger"].min() >= Params().capacity_min
+    assert "Past the adaptation limit" in set(result["state"]) or "Danger: NFO risk" in set(result["state"])
+
+
+def test_week_summary_names_the_personal_lines():
+    from app import describe
+
+    data = steady(120)
+    data.iloc[60:75, 0] -= 15
+    data.iloc[60:75, 1] += 6
+    result = analyse(data)
+    week = result.iloc[70:77]
+    text = describe.week(week, result.iloc[63:70], "en")
+    assert "danger threshold" in text
+
+
 def test_days_to_clear():
     assert days_to_clear(0.5) == 0
     assert days_to_clear(25) > days_to_clear(12) > 0
