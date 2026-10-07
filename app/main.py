@@ -753,7 +753,7 @@ def _latest(m: models.Model, result: pd.DataFrame, lang: str = "en") -> dict | N
         stats = [
             ("HRV 7-day", f"{row['hrv_week']:.0f} ms"),
             ("Normal range", f"{row['hrv_low']:.0f}–{row['hrv_high']:.0f} ms"),
-            ("CV 7-day", f"{row['cv']:.1f} %" if pd.notna(row["cv"]) else "—"),
+            ("CV 7-day", _cv_against_usual(result, row["cv"], lang)),
         ]
     return {
         "date": known.index[-1].date().isoformat(),
@@ -763,6 +763,22 @@ def _latest(m: models.Model, result: pd.DataFrame, lang: str = "en") -> dict | N
         "stats": stats,
         "norms": _norms(row) if m.key == "debt" else [],
     }
+
+
+def _cv_against_usual(result: pd.DataFrame, cv: float, lang: str) -> str:
+    """
+    CV has no threshold that holds for everyone, so it is read against the athlete's own:
+    the middle half of their last 90 days.
+    """
+    if pd.isna(cv):
+        return "—"
+    recent = result["cv"].dropna().tail(90)
+    if len(recent) < 28:
+        return f"{cv:.1f} %"
+    # Compared as shown, to one decimal, so "2.5 against 2.5–3.9" never reads as lower.
+    cv, low, high = round(cv, 1), round(recent.quantile(0.25), 1), round(recent.quantile(0.75), 1)
+    word = "lower than usual" if cv < low else "higher than usual" if cv > high else "as usual"
+    return f"{cv:.1f} % · {i18n.t(word, lang)} ({i18n.t('usual', lang)} {low:.1f}–{high:.1f} %)"
 
 
 def _norms(row) -> list[dict]:
