@@ -153,7 +153,7 @@ def analyse(daily: pd.DataFrame, p: Params = Params()) -> pd.DataFrame:
         # With no further negative day the debt is gone once the last one drops out of the window.
         clears.append(max(0, p.area_days - since_negative) if debt > 0 else 0)
 
-    out["debt"] = debts.round(1)
+    out["debt"] = debts.round(1) + 0.0  # rolling sums can leave a -0.0
     out["fo"], out["limit"], out["danger"] = (np.round(col, 1) for col in zip(*lines))
     out["capacity_change"] = np.round(changes, 1)
     out["recovered"] = recovered
