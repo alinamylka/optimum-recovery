@@ -49,7 +49,7 @@
   {% endif %}
 </div>
 
-<div class="card"><div id="chart" style="height:{{ 760 if model.key == 'debt' else 700 }}px"></div>{% if model.key == 'debt' %}<div id="legend" class="legend"></div>{% endif %}</div>
+<div class="card"><div id="chart" style="height:{{ 1100 if model.key == 'debt' else 700 }}px"></div>{% if model.key == 'debt' %}<div id="legend" class="legend"></div>{% endif %}</div>
 </section>
 
 <section class="pane" id="pane-weeks" hidden>
@@ -128,11 +128,28 @@ const L = {{ {
   "Resting HR": t("Resting HR"), "Decision": t("Decision"), "Functional overreaching": t("Functional overreaching"),
   "Adaptation limit": t("Adaptation limit"), "Danger threshold": t("Danger threshold"), "HRV variation": t("HRV variation"), "Normal range (SWC)": t("Normal range (SWC)"), "CV 7-day (%)": t("CV 7-day (%)"),
 }|tojson }};
+// An axis that fits the usual readings (2nd-98th percentile): a 101 after a bad night or a strap
+// glitch would otherwise squash everyone else into a flat line. Outliers go on the edge as triangles.
+function robustRange(key) {
+  const v = days.map(d => d[key]).filter(r => r != null).sort((a, b) => a - b);
+  if (!v.length) return [0, 1];
+  const q = p => v[Math.min(v.length - 1, Math.floor(p * v.length))];
+  const lo = q(0.02), hi = q(0.98), pad = Math.max(2, (hi - lo) * 0.15);
+  return [Math.floor(lo - pad), Math.ceil(hi + pad)];
+}
+function edgeMarkers(key, range, color, axis, name) {
+  const out = v => v != null && (v < range[0] || v > range[1]);
+  return {x: days.map(d => d.date), y: days.map(d => d[key] == null ? null : Math.min(Math.max(d[key], range[0]), range[1])), yaxis: axis,
+    mode: 'markers', name, customdata: days.map(d => d[key]), hovertemplate: name + ' %{customdata}<extra></extra>',
+    marker: {color, opacity: .5, size: days.map(d => out(d[key]) ? 7 : 4),
+             symbol: days.map(d => !out(d[key]) ? 'circle' : d[key] > range[1] ? 'triangle-up' : 'triangle-down')}};
+}
 if (days.length && modelKey === "debt") {
   const css = getComputedStyle(document.documentElement);
   const c = n => css.getPropertyValue('--' + n).trim();
   const x = days.map(d => d.date);
   const stateName = s => STATES[s] || s;
+  const hrvRange = robustRange('hrv'), rhrRange = robustRange('rhr');
   // Bars coloured by size, like the author's charts: under 3 green, 3-6 amber, 6 and more red.
   const bySize = (v, mid, lo, hi) => v == null ? c('line') : Math.abs(v - mid) >= hi ? c('red') : Math.abs(v - mid) >= lo ? c('amber') : c('green');
   const traces = [
@@ -147,8 +164,17 @@ if (days.length && modelKey === "debt") {
      marker: {color: days.map(d => d.hrv_variation == null ? c('line') : (d.hrv_variation <= 1 || d.hrv_variation >= 8) ? c('red')
        : (d.hrv_variation < 3 || d.hrv_variation > 6) ? c('amber') : c('green'))},
      customdata: days.map(d => d.hrv_variation), hovertemplate: L['HRV variation'] + ' %{customdata}<extra></extra>'},
+    // The measurements themselves, against the athlete's usual range: what readiness is made of.
+    ...[['hrv', 'y4', c('accent'), 'HRV', hrvRange], ['rhr', 'y5', c('red'), L['Resting HR'], rhrRange]].flatMap(([k, axis, color, name, range]) => [
+      {x, y: days.map(d => d[k + '_low']), yaxis: axis, mode: 'lines', line: {width: 0}, hoverinfo: 'skip'},
+      {x, y: days.map(d => d[k + '_high']), yaxis: axis, mode: 'lines', line: {width: 0}, fill: 'tonexty',
+       fillcolor: 'rgba(128,128,128,0.22)', hoverinfo: 'skip'},
+      edgeMarkers(k, range, color, axis, name),
+      {x, y: days.map(d => d[k + '_week']), yaxis: axis, mode: 'lines', line: {color, width: 2}, name: name + ' 7d',
+       hovertemplate: name + ' 7d %{y:.1f}<extra></extra>'},
+    ]),
   ];
-  // The state of each day as a coloured band behind all three panels.
+  // The state of each day as a coloured band behind all the panels.
   const shapes = [];
   let run = null;
   days.forEach((d, i) => {
@@ -166,22 +192,18 @@ if (days.length && modelKey === "debt") {
     paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: c('text')}, bargap: 0,
     margin: {l: 60, r: 10, t: 10, b: 30}, showlegend: false, hovermode: 'x unified', shapes: [...bands, varBand, ...recoveries],
     xaxis: {gridcolor: c('line'), anchor: 'y3'},
-    yaxis: {...axis([0.70, 1], L['Readiness'] + ' (−9…+9)'), range: [-9.5, 9.5], tickvals: [-6, -3, 0, 3, 6]},
-    yaxis2: {...axis([0.36, 0.66], L['Fatigue debt']), rangemode: 'tozero'},
-    yaxis3: {...axis([0, 0.32], L['HRV variation'] + ' (0…9)'), range: [-0.5, 9.5], tickvals: [0, 3, 4.5, 6, 9]},
+    yaxis: {...axis([0.80, 1], L['Readiness'] + ' (−9…+9)'), range: [-9.5, 9.5], tickvals: [-6, -3, 0, 3, 6]},
+    yaxis2: {...axis([0.58, 0.77], L['Fatigue debt']), rangemode: 'tozero'},
+    yaxis4: {...axis([0.38, 0.55], 'HRV (ms)'), range: hrvRange},
+    yaxis5: {...axis([0.19, 0.35], L['Resting HR']), range: rhrRange},
+    yaxis3: {...axis([0, 0.16], L['HRV variation'] + ' (0…9)'), range: [-0.5, 9.5], tickvals: [0, 3, 4.5, 6, 9]},
   }, {responsive: true, displaylogo: false});
   const present = [...new Set(days.map(d => d.state))].filter(s => STATE_COLORS[s]);
   document.getElementById('legend').innerHTML = Object.keys(STATE_COLORS).filter(s => present.includes(s))
     .map(s => `<span><i style="background:${STATE_COLORS[s]}"></i>${stateName(s)}</span>`).join('');
 }
 if (days.length && modelKey !== "debt") {
-  var rhrRange = (() => {
-    const v = days.map(d => d.rhr).filter(r => r != null).sort((a, b) => a - b);
-    if (!v.length) return [0, 1];
-    const q = p => v[Math.min(v.length - 1, Math.floor(p * v.length))];
-    const lo = q(0.02), hi = q(0.98), pad = Math.max(2, (hi - lo) * 0.15);
-    return [Math.floor(lo - pad), Math.ceil(hi + pad)];
-  })();
+  const rhrRange = robustRange('rhr');
   const css = getComputedStyle(document.documentElement);
   const c = n => css.getPropertyValue('--' + n).trim();
   const x = days.map(d => d.date);
@@ -196,12 +218,7 @@ if (days.length && modelKey !== "debt") {
     {x, y: days.map(d => d.hrv_week), yaxis: 'y2', mode: 'lines+markers', line: {color: c('accent')},
      marker: {size: 5, color: days.map(d => col(d.signal))}, name: L['HRV 7-day']},
     {x, y: days.map(d => d.cv), yaxis: 'y3', mode: 'lines', line: {color: '#8a63d2'}, name: L['CV 7-day (%)']},
-    // Readings outside the usual spread (a 100 after a bad night or a strap glitch) sit on the edge
-    // as triangles, so they don't squash everyone else into a flat line.
-    {x, y: days.map(d => d.rhr == null ? null : Math.min(Math.max(d.rhr, rhrRange[0]), rhrRange[1])), yaxis: 'y4', mode: 'markers',
-     marker: {size: days.map(d => d.rhr != null && (d.rhr < rhrRange[0] || d.rhr > rhrRange[1]) ? 7 : 4), color: c('red'), opacity: .5,
-              symbol: days.map(d => d.rhr == null ? 'circle' : d.rhr > rhrRange[1] ? 'triangle-up' : d.rhr < rhrRange[0] ? 'triangle-down' : 'circle')},
-     customdata: days.map(d => d.rhr), hovertemplate: L['Resting HR'] + ' %{customdata}<extra></extra>', name: L['Resting HR']},
+    edgeMarkers('rhr', rhrRange, c('red'), 'y4', L['Resting HR']),
   ];
   const axis = (domain, title) => ({domain, title: {text: title}, gridcolor: c('line'), zerolinecolor: c('line')});
   Plotly.newPlot('chart', traces, {
