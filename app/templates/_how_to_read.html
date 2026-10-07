@@ -3,7 +3,7 @@
 {% if model.key == 'debt' %}
 {% set fo = (lines.fo if lines else params.amber)|round|int %}{% set limit = (lines.limit if lines else params.capacity * params.limit_share)|round|int %}{% set danger = (lines.danger if lines else params.capacity)|round|int %}
 {% if lang == 'pl' %}
-  <p class="lead">Ten model odtwarza metodę z wykresów, które Arkadiusz dostaje od jej autora. Kod autora nie jest publiczny, więc wzory dopasowałyśmy do jego wykresów na danych Aliny z tego samego okresu.</p>
+  <p class="lead">Nasz model regeneracji: codzienna gotowość, dług zmęczeniowy z osobistymi progami i stan układu autonomicznego — z HRV, tętna spoczynkowego i stresu.</p>
 
   <h4>Gotowość dnia (−9…+9)</h4>
   <p>Każda z trzech metryk dostaje od −3 do +3 punktów: średnia z ostatnich {{ params.acute_days }} dni w porównaniu z własną bazą zawodnika z {{ params.baseline_days }} dni, jeden punkt na każde pół odchylenia standardowego.</p>
@@ -32,7 +32,7 @@
 
   <h4>Jak zmieniają się progi</h4>
   <ul>
-    <li><b>Start:</b> próg niebezpieczny {{ params.capacity|int }} dla wszystkich (jak u autora: {{ params.amber|round|int }} / {{ (params.capacity * params.limit_share)|round|int }} / {{ params.capacity|int }}). Granica adaptacji to zawsze {{ (params.limit_share * 100)|round|int }}% progu niebezpiecznego, przeciążenie funkcjonalne {{ (params.fo_share * 100)|round|int }}%.</li>
+    <li><b>Start:</b> próg niebezpieczny {{ params.capacity|int }} dla wszystkich ({{ params.amber|round|int }} / {{ (params.capacity * params.limit_share)|round|int }} / {{ params.capacity|int }}). Granica adaptacji to zawsze {{ (params.limit_share * 100)|round|int }}% progu niebezpiecznego, przeciążenie funkcjonalne {{ (params.fo_share * 100)|round|int }}%.</li>
     <li><b>Szybki powrót</b> — blok przekroczył próg przeciążenia funkcjonalnego, a od jego szczytu do zera minęło najwyżej {{ params.fast_recovery }} dni: organizm się zaadaptował, progi rosną.</li>
     <li><b>Powolny powrót</b> — {{ params.slow_recovery }} dni i więcej: blok kosztował więcej, niż organizm miał, progi spadają.</li>
     <li><b>Przeciągnięte przeciążenie</b> — ponad {{ params.linger_days }} dni z rzędu powyżej progu przeciążenia funkcjonalnego: progi spadają o {{ (params.linger_loss * 100)|round|int }}% dziennie.</li>
@@ -54,9 +54,9 @@
     <div class="level"><span class="dot red"></span><b>NFO / niebezpiecznie</b><span>Dług ponad progiem niebezpiecznym: ryzyko przeciążenia niefunkcjonalnego.</span></div>
   </div>
 
-  <p class="muted small">Struktura (punkty metryk, pole z 8 dni, progi 44% / 77% / 100%, stany) pochodzi z wykresów autora metody; liczby, które nie dały się odczytać — z naszego dopasowania. Podstawy: HRV względem własnej bazy (Plews 2013), zmienność HRV (Plews 2012), przeciążenie (Meeusen 2013), odbicie HRV (Le Meur 2013), obciążenie allostatyczne (McEwen 1998). Wymaga kalibracji — stąd „eksperymentalny”.</p>
+  <p class="muted small">Podstawy: HRV względem własnej bazy (Plews 2013), zmienność HRV (Plews 2012), przeciążenie (Meeusen 2013), odbicie HRV (Le Meur 2013), obciążenie allostatyczne (McEwen 1998). Wymaga kalibracji — stąd „eksperymentalny”.</p>
 {% else %}
-  <p class="lead">This model reconstructs the method behind the charts Arkadiusz gets from its author. The author's code is not public, so the formulas were fitted to his charts on Alina's data from the same period.</p>
+  <p class="lead">Our recovery model: daily readiness, a fatigue debt with personal thresholds and the state of the autonomic nervous system — from HRV, resting HR and stress.</p>
 
   <h4>Daily readiness (−9…+9)</h4>
   <p>Each of three metrics scores −3 to +3: its average over the last {{ params.acute_days }} days against the athlete's own {{ params.baseline_days }}-day baseline, one point per half standard deviation.</p>
@@ -85,7 +85,7 @@
 
   <h4>How the thresholds move</h4>
   <ul>
-    <li><b>Start:</b> danger at {{ params.capacity|int }} for everyone (as in the author's charts: {{ params.amber|round|int }} / {{ (params.capacity * params.limit_share)|round|int }} / {{ params.capacity|int }}). The adaptation limit is always {{ (params.limit_share * 100)|round|int }}% of danger, functional overreaching {{ (params.fo_share * 100)|round|int }}%.</li>
+    <li><b>Start:</b> danger at {{ params.capacity|int }} for everyone ({{ params.amber|round|int }} / {{ (params.capacity * params.limit_share)|round|int }} / {{ params.capacity|int }}). The adaptation limit is always {{ (params.limit_share * 100)|round|int }}% of danger, functional overreaching {{ (params.fo_share * 100)|round|int }}%.</li>
     <li><b>Quick recovery</b> — a block went past functional overreaching and was back to zero at most {{ params.fast_recovery }} days after its peak: the body adapted, the thresholds rise.</li>
     <li><b>Slow recovery</b> — {{ params.slow_recovery }} days or more: the block cost more than the body had, the thresholds fall.</li>
     <li><b>Drawn-out overload</b> — more than {{ params.linger_days }} days in a row past functional overreaching: the thresholds fall by {{ (params.linger_loss * 100)|round|int }}% a day.</li>
@@ -107,7 +107,7 @@
     <div class="level"><span class="dot red"></span><b>NFO / danger</b><span>Debt past danger: risk of non-functional overreaching.</span></div>
   </div>
 
-  <p class="muted small">The structure (metric points, the 8-day area, thresholds at 44% / 77% / 100%, the states) comes from the method author's charts; numbers that could not be read off them come from our fit. Foundations: HRV against one's own baseline (Plews 2013), HRV variation (Plews 2012), overreaching (Meeusen 2013), HRV rebound (Le Meur 2013), allostatic load (McEwen 1998). Needs calibrating — hence "experimental".</p>
+  <p class="muted small">Foundations: HRV against one's own baseline (Plews 2013), HRV variation (Plews 2012), overreaching (Meeusen 2013), HRV rebound (Le Meur 2013), allostatic load (McEwen 1998). Needs calibrating — hence "experimental".</p>
 {% endif %}
 {% else %}
 {% if lang == 'pl' %}

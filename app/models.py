@@ -103,9 +103,8 @@ MODELS = {
             key="debt",
             name="Fatigue debt (experimental)",
             published=False,
-            summary="Our reconstruction of the method behind Arkadiusz's charts, whose code is not public: "
-            "readiness from HRV, resting HR and stress, the fatigue debt of the last 8 days, personal thresholds "
-            "and a daily autonomic state. Fitted to the author's charts on Alina's data; not published or validated.",
+            summary="Our own model: readiness from HRV, resting HR and stress, the fatigue debt of the last 8 days, "
+            "personal thresholds and a daily autonomic state. Not published or validated yet.",
             analyse=model.analyse,
             advice=model.SIGNALS,
             sources=(PLEWS_2013, PLEWS_2012, MEEUSEN_2013, LE_MEUR_2013, MCEWEN_1998),

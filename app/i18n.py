@@ -129,8 +129,8 @@ PL: dict[str, str] = {
     "Fatigue debt (experimental)": "Dług zmęczeniowy (eksperymentalny)",
     "Published method tested in cyclists: train hard when the 7-day HRV average is inside the athlete's normal range, easy or rest when it is outside — above or below.":
         "Opublikowana metoda sprawdzona na kolarzach: mocny trening, gdy 7-dniowa średnia HRV jest w normie zawodnika; lekko albo odpoczynek, gdy wychodzi poza nią — w górę lub w dół.",
-    "Our reconstruction of the method behind Arkadiusz's charts, whose code is not public: readiness from HRV, resting HR and stress, the fatigue debt of the last 8 days, personal thresholds and a daily autonomic state. Fitted to the author's charts on Alina's data; not published or validated.":
-        "Nasza rekonstrukcja metody z wykresów Arkadiusza, której kod nie jest publiczny: gotowość z HRV, tętna spoczynkowego i stresu, dług zmęczeniowy z ostatnich 8 dni, osobiste progi i codzienny stan układu autonomicznego. Dopasowana do wykresów autora na danych Aliny; nieopublikowana i niezwalidowana.",
+    "Our own model: readiness from HRV, resting HR and stress, the fatigue debt of the last 8 days, personal thresholds and a daily autonomic state. Not published or validated yet.":
+        "Nasz własny model: gotowość z HRV, tętna spoczynkowego i stresu, dług zmęczeniowy z ostatnich 8 dni, osobiste progi i codzienny stan układu autonomicznego. Jeszcze nieopublikowany i niezwalidowany.",
     # Today's stats
     "Readiness": "Gotowość",
     "Fatigue debt": "Dług zmęczeniowy",
