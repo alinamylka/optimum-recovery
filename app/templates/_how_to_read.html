@@ -1,4 +1,5 @@
 <div class="card guide">
+{% include "_chart_guide.html" %}
 {% if model.key == 'debt' %}
 {% set fo = (lines.fo if lines else params.amber)|round|int %}{% set limit = (lines.limit if lines else params.capacity * params.limit_share)|round|int %}{% set danger = (lines.danger if lines else params.capacity)|round|int %}
 {% if lang == 'pl' %}

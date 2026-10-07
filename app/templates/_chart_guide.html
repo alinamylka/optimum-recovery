@@ -1,0 +1,56 @@
+<h4 style="margin-top:0">{{ 'Jak czytać wykres' if lang == 'pl' else 'Reading the chart' }}</h4>
+<figure class="sketch-wrap">
+{% include "_diagrams.html" %}
+<figcaption class="muted small">{{ 'Schemat — przykładowe dane, nie Twoje.' if lang == 'pl' else 'A sketch — example data, not yours.' }}</figcaption>
+</figure>
+{% if model.key == 'debt' %}
+{% if lang == 'pl' %}
+<ol class="numbered">
+  <li><b>Słupek w górę</b> — gotowość dnia lepsza niż zwykle. Kolor mówi, jak bardzo: <span class="dot green"></span>do ±2, <span class="dot amber"></span>od ±3, <span class="dot red"></span>od ±6.</li>
+  <li><b>Słupek w dół</b> — organizm wygląda gorzej niż zwykle. Takie dni budują dług.</li>
+  <li><b>Szare pole</b> — dług zmęczeniowy: suma „dołków” z ostatnich 8 dni. Im wyżej, tym więcej nazbieranego zmęczenia.</li>
+  <li><b>Fioletowa przerywana</b> — próg przeciążenia funkcjonalnego. Powyżej: dobry bodziec, jeśli potem przyjdzie regeneracja.</li>
+  <li><b>Żółta przerywana</b> — granica adaptacji. Powyżej organizm traci zamiast zyskiwać — trenuj spokojnie.</li>
+  <li><b>Czerwona przerywana</b> — próg niebezpieczny. Powyżej tylko lekko albo odpoczynek.</li>
+  <li><b>Zielona pionowa kropkowana</b> — pełna regeneracja: dług spadł do zera.</li>
+  <li><b>Szary pas na dole</b> — zwykła zmienność HRV (3–6). Słupek poza pasem: HRV skacze z dnia na dzień bardziej (albo mniej) niż zwykle.</li>
+  <li><b>Kolor tła</b> — stan dnia (np. przeciążenie funkcjonalne, odbicie, świeżość). Opis kolorów jest pod wykresem.</li>
+</ol>
+{% else %}
+<ol class="numbered">
+  <li><b>Bar up</b> — readiness better than usual. The colour says by how much: <span class="dot green"></span>up to ±2, <span class="dot amber"></span>from ±3, <span class="dot red"></span>from ±6.</li>
+  <li><b>Bar down</b> — the body looks worse than usual. These days build the debt.</li>
+  <li><b>Grey area</b> — fatigue debt: the sum of the dips over the last 8 days. Higher means more fatigue built up.</li>
+  <li><b>Purple dashed</b> — functional overreaching threshold. Above it: a good stimulus, if recovery follows.</li>
+  <li><b>Amber dashed</b> — adaptation limit. Above it the body loses rather than gains — train calmly.</li>
+  <li><b>Red dashed</b> — danger threshold. Above it: easy only, or rest.</li>
+  <li><b>Green dotted vertical</b> — full recovery: the debt is back to zero.</li>
+  <li><b>Grey band at the bottom</b> — usual HRV variation (3–6). A bar outside it: HRV jumps from day to day more (or less) than usual.</li>
+  <li><b>Background colour</b> — the state of the day (e.g. functional overreaching, rebound, freshness). The colours are explained under the chart.</li>
+</ol>
+{% endif %}
+{% else %}
+{% if lang == 'pl' %}
+<ol class="numbered">
+  <li><b>Pasek na górze</b> — decyzja na dzień: <span class="dot green"></span>mocny trening zgodnie z planem, <span class="dot amber"></span>lekko albo odpoczynek.</li>
+  <li><b>Małe kropki</b> — pomiar HRV z każdej nocy. Skaczą — to normalne.</li>
+  <li><b>Linia</b> — średnia z 7 dni. To na niej opiera się decyzja; kolor punktu = decyzja tego dnia.</li>
+  <li><b>Szary pas</b> — Twoja norma. Przeliczana co 4 tygodnie, dlatego zmienia się schodkowo.</li>
+  <li><b>Linia schodzi pod pas</b> — nagromadzone zmęczenie (albo choroba, stres, podróż): dni robią się żółte.</li>
+  <li><b>Linia wychodzi nad pas</b> — też żółte dni: nagły wzrost bywa reakcją na przeciążenie, nie świeżością.</li>
+  <li><b>Fioletowa linia</b> — CV: jak bardzo HRV skacze z dnia na dzień. Rośnie przy spadającym HRV = uwaga.</li>
+  <li><b>Czerwone kropki</b> — tętno spoczynkowe, dla kontekstu (nie wpływa na decyzję).</li>
+</ol>
+{% else %}
+<ol class="numbered">
+  <li><b>Top strip</b> — the decision for the day: <span class="dot green"></span>hard training as planned, <span class="dot amber"></span>easy or rest.</li>
+  <li><b>Small dots</b> — each night's HRV reading. They jump — that's normal.</li>
+  <li><b>Line</b> — the 7-day average. The decision rests on it; the point's colour is that day's decision.</li>
+  <li><b>Grey band</b> — your normal range. Recalculated every 4 weeks, so it moves in steps.</li>
+  <li><b>Line drops under the band</b> — built-up fatigue (or illness, stress, travel): days turn amber.</li>
+  <li><b>Line rises above the band</b> — amber days too: a sudden rise can be a reaction to overload, not freshness.</li>
+  <li><b>Purple line</b> — CV: how much HRV jumps from day to day. Rising while HRV falls = watch out.</li>
+  <li><b>Red dots</b> — resting HR, for context (it doesn't change the decision).</li>
+</ol>
+{% endif %}
+{% endif %}

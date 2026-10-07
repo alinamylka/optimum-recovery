@@ -60,6 +60,20 @@
   .avatar { display:inline-grid; place-items:center; flex:none; border-radius:50%; object-fit:cover; color:#fff; font-weight:700; }
   .legend { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:12px; color:var(--muted); padding:4px 8px 0 60px; }
   .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; vertical-align:-2px; opacity:.6; }
+  .sketch-wrap { margin:0 0 8px; }
+  .sketch { width:100%; max-width:720px; height:auto; display:block; }
+  .sketch .panel { fill:none; stroke:var(--line); }
+  .sketch .axis { stroke:var(--muted); stroke-width:1; }
+  .sketch .band { fill:rgba(128,128,128,.25); }
+  .sketch .debt-area { fill:rgba(136,136,136,.35); } .sketch .debt-line { fill:none; stroke:#888; stroke-width:2; }
+  .sketch .dot-hrv { fill:var(--accent); opacity:.4; } .sketch .hrv-line { fill:none; stroke:var(--accent); stroke-width:2; }
+  .sketch .ylabel { fill:var(--muted); font-size:11px; text-anchor:middle; }
+  .sketch .badge { fill:var(--text); } .sketch .badge-n { fill:var(--bg); font:700 12px system-ui; text-anchor:middle; }
+  .sketch .arrow { stroke:var(--text); stroke-width:1.5; } .sketch .arrowhead { fill:var(--text); }
+  ol.numbered { padding-left:0; list-style:none; counter-reset:n; margin:8px 0 0; }
+  ol.numbered li { counter-increment:n; position:relative; padding-left:32px; margin-bottom:8px; }
+  ol.numbered li::before { content:counter(n); position:absolute; left:0; top:2px; display:grid; place-items:center; width:20px; height:20px;
+                           border-radius:50%; background:var(--text); color:var(--bg); font:700 12px system-ui; }
   .guide summary { cursor:pointer; font-weight:600; }
   .guide[open] summary { margin-bottom:12px; }
   .guide { line-height:1.6; }
