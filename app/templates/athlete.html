@@ -105,12 +105,7 @@ showPane(location.hash.slice(1) || 'overview');
 const days = {{ series|tojson }};
 const modelKey = {{ model.key|tojson }};
 const STATES = {{ state_names|tojson }};
-// The author's legend colours.
-const STATE_COLORS = {
-  "Peak freshness": "#5fcf9b", "Standard loading (parasympathetic)": "#6fb8e0", "Standard loading (sympathetic)": "#7f9ff0",
-  "Chronic creep": "#f5b94f", "Functional overreaching": "#a37ef0", "Autonomic rebound (fake-out)": "#ef7fb4",
-  "Borderline exhaustion": "#f08a5d", "NFO / danger": "#e04848",
-};
+const STATE_COLORS = {{ state_colors|tojson }};
 const L = {{ {
   "Readiness": t("Readiness"), "readiness": t("readiness"), "Fatigue debt": t("Fatigue debt"), "HRV normal range": t("HRV normal range"),
   "HRV 7-day": t("HRV 7-day"), "RHR normal range": t("RHR normal range"), "RHR": t("RHR"), "RHR 7-day": t("RHR 7-day"),

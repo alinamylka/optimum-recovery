@@ -44,14 +44,15 @@
   <p>Jak bardzo HRV skakało z dnia na dzień przez ostatnie 7 dni, w porównaniu ze zwykłą zmiennością zawodnika: 4,5 = jak zwykle, 3–6 = norma (szary pas). Wysoka zmienność przy spadającym HRV widziano przed przetrenowaniem (Plews 2012).</p>
 
   <h4>Stan dnia (kolor tła)</h4>
-  <div class="levels">
-    <div class="level"><span class="dot green"></span><b>Zwykłe obciążenie</b><span>Dług poniżej progu przeciążenia. <b>Przywspółczulne</b>, gdy HRV jest w normie lub wyżej (organizm się regeneruje), <b>współczulne</b>, gdy HRV jest niżej (organizm pracuje pod obciążeniem).</span></div>
-    <div class="level"><span class="dot green"></span><b>Szczytowa świeżość</b><span>Zero długu i gotowość od +3: dobry moment na mocną jednostkę albo start.</span></div>
-    <div class="level"><span class="dot amber"></span><b>Pełzające zmęczenie</b><span>HRV osuwa się poniżej normy, choć tętno jeszcze nie — zmęczenie, którego żaden pojedynczy dzień nie pokazuje.</span></div>
-    <div class="level"><span class="dot amber"></span><b>Przeciążenie funkcjonalne</b><span>Dług między progiem przeciążenia a granicą adaptacji.</span></div>
-    <div class="level"><span class="dot amber"></span><b>Odbicie autonomiczne</b><span>HRV skacze mocno w górę w środku bloku obciążeń. To „fałszywa świeżość” — reakcja na przeciążenie (Le Meur 2013), a nie regeneracja.</span></div>
-    <div class="level"><span class="dot amber"></span><b>Na granicy wyczerpania</b><span>Dług ponad granicą adaptacji.</span></div>
-    <div class="level"><span class="dot red"></span><b>NFO / niebezpiecznie</b><span>Dług ponad progiem niebezpiecznym: ryzyko przeciążenia niefunkcjonalnego.</span></div>
+  <div class="levels states">
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Standard loading (parasympathetic)"] }}"></span><b>Zwykłe obciążenie, przywspółczulne</b><span>Dług poniżej progu przeciążenia, HRV w normie lub wyżej: organizm się regeneruje.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Standard loading (sympathetic)"] }}"></span><b>Zwykłe obciążenie, współczulne</b><span>Dług poniżej progu przeciążenia, HRV niżej: organizm pracuje pod obciążeniem.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Peak freshness"] }}"></span><b>Szczytowa świeżość</b><span>Zero długu i gotowość od +3: dobry moment na mocną jednostkę albo start.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Chronic creep"] }}"></span><b>Pełzające zmęczenie</b><span>HRV osuwa się poniżej normy, choć tętno jeszcze nie — zmęczenie, którego żaden pojedynczy dzień nie pokazuje.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Functional overreaching"] }}"></span><b>Przeciążenie funkcjonalne</b><span>Dług między progiem przeciążenia a granicą adaptacji.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Autonomic rebound (fake-out)"] }}"></span><b>Odbicie autonomiczne</b><span>HRV skacze mocno w górę w środku bloku obciążeń. To „fałszywa świeżość” — reakcja na przeciążenie (Le Meur 2013), a nie regeneracja.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Borderline exhaustion"] }}"></span><b>Na granicy wyczerpania</b><span>Dług ponad granicą adaptacji.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["NFO / danger"] }}"></span><b>NFO / niebezpiecznie</b><span>Dług ponad progiem niebezpiecznym: ryzyko przeciążenia niefunkcjonalnego.</span></div>
   </div>
 
   <p class="muted small">Podstawy: HRV względem własnej bazy (Plews 2013), zmienność HRV (Plews 2012), przeciążenie (Meeusen 2013), odbicie HRV (Le Meur 2013), obciążenie allostatyczne (McEwen 1998). Wymaga kalibracji — stąd „eksperymentalny”.</p>
@@ -97,14 +98,15 @@
   <p>How much HRV jumped from day to day over the last 7 days, against the athlete's usual variation: 4.5 = as usual, 3–6 = normal (the grey band). High variation with falling HRV was seen before overtraining (Plews 2012).</p>
 
   <h4>State of the day (background colour)</h4>
-  <div class="levels">
-    <div class="level"><span class="dot green"></span><b>Standard loading</b><span>Debt below functional overreaching. <b>Parasympathetic</b> when HRV is normal or higher (the body is recovering), <b>sympathetic</b> when it is lower (working under load).</span></div>
-    <div class="level"><span class="dot green"></span><b>Peak freshness</b><span>No debt and readiness of +3 or more: a good moment for a key session or a race.</span></div>
-    <div class="level"><span class="dot amber"></span><b>Chronic creep</b><span>HRV sliding below normal while resting HR isn't yet — fatigue no single day shows.</span></div>
-    <div class="level"><span class="dot amber"></span><b>Functional overreaching</b><span>Debt between functional overreaching and the adaptation limit.</span></div>
-    <div class="level"><span class="dot amber"></span><b>Autonomic rebound</b><span>HRV jumps well up in the middle of a block. A "fake-out" — the body reacting to overload (Le Meur 2013), not recovery.</span></div>
-    <div class="level"><span class="dot amber"></span><b>Borderline exhaustion</b><span>Debt past the adaptation limit.</span></div>
-    <div class="level"><span class="dot red"></span><b>NFO / danger</b><span>Debt past danger: risk of non-functional overreaching.</span></div>
+  <div class="levels states">
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Standard loading (parasympathetic)"] }}"></span><b>Standard loading, parasympathetic</b><span>Debt below functional overreaching, HRV normal or higher: the body is recovering.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Standard loading (sympathetic)"] }}"></span><b>Standard loading, sympathetic</b><span>Debt below functional overreaching, HRV lower: the body is working under load.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Peak freshness"] }}"></span><b>Peak freshness</b><span>No debt and readiness of +3 or more: a good moment for a key session or a race.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Chronic creep"] }}"></span><b>Chronic creep</b><span>HRV sliding below normal while resting HR isn't yet — fatigue no single day shows.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Functional overreaching"] }}"></span><b>Functional overreaching</b><span>Debt between functional overreaching and the adaptation limit.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Autonomic rebound (fake-out)"] }}"></span><b>Autonomic rebound</b><span>HRV jumps well up in the middle of a block. A "fake-out" — the body reacting to overload (Le Meur 2013), not recovery.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["Borderline exhaustion"] }}"></span><b>Borderline exhaustion</b><span>Debt past the adaptation limit.</span></div>
+    <div class="level"><span class="swatch" style="background:{{ state_colors["NFO / danger"] }}"></span><b>NFO / danger</b><span>Debt past danger: risk of non-functional overreaching.</span></div>
   </div>
 
   <p class="muted small">Foundations: HRV against one's own baseline (Plews 2013), HRV variation (Plews 2012), overreaching (Meeusen 2013), HRV rebound (Le Meur 2013), allostatic load (McEwen 1998). Needs calibrating — hence "experimental".</p>

@@ -53,6 +53,14 @@ def _avatar(a, size: int = 36) -> Markup:
 
 
 templates.env.globals["avatar"] = _avatar
+
+# Background colour of each day's state on the fatigue-debt chart; the guide uses the same ones.
+STATE_COLORS = {
+    "Peak freshness": "#5fcf9b", "Standard loading (parasympathetic)": "#6fb8e0", "Standard loading (sympathetic)": "#7f9ff0",
+    "Chronic creep": "#f5b94f", "Functional overreaching": "#a37ef0", "Autonomic rebound (fake-out)": "#ef7fb4",
+    "Borderline exhaustion": "#f08a5d", "NFO / danger": "#e04848",
+}
+templates.env.globals["state_colors"] = STATE_COLORS
 STATIC = Path(__file__).parent / "static"
 # Icons are public: browsers fetch them before anyone signs in.
 app.mount("/static", StaticFiles(directory=STATIC), name="static")

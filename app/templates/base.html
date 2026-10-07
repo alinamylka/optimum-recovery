@@ -59,6 +59,8 @@
   details.menu > div a:hover { background:var(--bg); }
   .avatar { display:inline-grid; place-items:center; flex:none; border-radius:50%; object-fit:cover; color:#fff; font-weight:700; }
   .legend { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:12px; color:var(--muted); padding:4px 8px 0 60px; }
+  .levels.states .level { grid-template-columns:18px 220px 1fr; }
+  .swatch { display:inline-block; width:14px; height:14px; border-radius:3px; opacity:.75; vertical-align:-2px; }
   .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; vertical-align:-2px; opacity:.6; }
   .sketch-wrap { margin:0 0 8px; }
   .sketch { width:100%; max-width:720px; height:auto; display:block; }
@@ -90,7 +92,7 @@
   .warnings { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px; }
   .warnings div { border-left:3px solid var(--amber); background:var(--bg); padding:10px 12px; border-radius:0 8px 8px 0; }
   .warnings b { display:block; margin-bottom:2px; }
-  @media (max-width:560px) { .level { grid-template-columns:18px 1fr; } .level > span:last-child { grid-column:2; } }
+  @media (max-width:560px) { .level, .levels.states .level { grid-template-columns:18px 1fr; } .level > span:last-child { grid-column:2; } }
   .info { display:inline-grid; place-items:center; width:15px; height:15px; margin-left:4px; border-radius:50%;
           border:1px solid currentColor; font:700 10px/1 system-ui; cursor:help; vertical-align:1px; opacity:.7;
           text-transform:none; letter-spacing:0; }
