@@ -13,8 +13,16 @@
   {% endfor %}
 </nav>
 <p class="muted">{% if model.published %}<span class="badge">{{ t("Published method") }}</span>{% else %}<span class="badge exp">{{ t("Experimental") }}</span>{% endif %}
-  {{ t(model.summary) }} <a href="#sources">{{ t("Sources ↓") }}</a></p>
+  {{ t(model.summary) }}</p>
 
+<nav class="tabs panes">
+  <a href="#overview" data-pane="overview" class="active">{{ t("Overview") }}</a>
+  {% if today %}<a href="#weeks" data-pane="weeks">{{ t("Weeks") }}</a>{% endif %}
+  <a href="#guide" data-pane="guide">{{ t("How to read this") }}</a>
+  <a href="#sources" data-pane="sources">{{ t("Sources") }}</a>
+</nav>
+
+<section class="pane" id="pane-overview">
 {% if today %}
 <div class="card">
   <div class="big"><span class="dot {{ today.signal }}"></span>{{ today.state }}</div>
@@ -26,7 +34,9 @@
 </div>
 
 <div class="card"><div id="chart" style="height:{{ 860 if model.key == 'debt' else 700 }}px"></div></div>
+</section>
 
+<section class="pane" id="pane-weeks" hidden>
 <div class="card scroll">
   <h3 style="margin-top:0">{{ t("Weeks") }}</h3>
   <p class="muted" style="margin-top:0">{{ t("Click a week for a written summary.") }}</p>
@@ -53,13 +63,18 @@
     {% endif %}
   </table>
 </div>
+</section>
 {% else %}
 <div class="card muted">{% if hrv_days %}{{ t("Building the baseline: {days} of {needed} days with HRV so far. The first signals come once there are {needed}.", days=hrv_days, needed=baseline_days) }}{% elif configurable %}{{ t('No data yet — connect intervals.icu or upload an export in <a href="{url}">Settings</a>.', url="/athletes/" ~ athlete.id ~ "/settings") }}{% else %}{{ t("No data yet.") }}{% endif %}</div>
+</section>
 {% endif %}
 
+<section class="pane" id="pane-guide" hidden>
 {% include "_how_to_read.html" %}
+</section>
 
-<div class="card" id="sources">
+<section class="pane" id="pane-sources" hidden>
+<div class="card">
   <h3 style="margin-top:0">{{ t("Sources") }}</h3>
   <ol class="sources">
     {% for src in model.sources %}
@@ -67,9 +82,26 @@
     {% endfor %}
   </ol>
 </div>
+</section>
 
 <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
 <script>
+// Tabs instead of one long page; the hash keeps the tab across reloads and model switches.
+function showPane(name) {
+  const link = document.querySelector(`.panes a[data-pane="${name}"]`);
+  if (!link) return;
+  document.querySelectorAll('.panes a').forEach(a => a.classList.toggle('active', a === link));
+  document.querySelectorAll('.pane').forEach(p => p.hidden = p.id !== 'pane-' + name);
+  const chart = document.getElementById('chart');
+  if (name === 'overview' && chart && chart.data) Plotly.Plots.resize(chart);
+}
+document.querySelectorAll('.panes a').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault();
+  history.replaceState(null, '', '#' + a.dataset.pane);
+  showPane(a.dataset.pane);
+}));
+document.querySelectorAll('nav.tabs:not(.panes) a').forEach(a => a.addEventListener('click', () => { a.href += location.hash; }));
+showPane(location.hash.slice(1) || 'overview');
 const days = {{ series|tojson }};
 const modelKey = {{ model.key|tojson }};
 const L = {{ {

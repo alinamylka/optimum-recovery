@@ -102,7 +102,6 @@ PL: dict[str, str] = {
     "Coach: {name} (you see it as admin)": "Trener: {name} (widzisz jako admin)",
     "Published method": "Opublikowana metoda",
     "Experimental": "Eksperymentalny",
-    "Sources ↓": "Źródła ↓",
     "Sources": "Źródła",
     "Used for: {what}": "Do czego: {what}",
     "Day": "Dzień",
@@ -124,6 +123,7 @@ PL: dict[str, str] = {
     "Building the baseline: {days} of {needed} days with HRV so far. The first signals come once there are {needed}.":
         "Zbieramy bazę: na razie {days} z {needed} dni z HRV. Pierwsze sygnały pojawią się, gdy będzie ich {needed}.",
     "How to read this": "Jak to czytać",
+    "Overview": "Przegląd",
     "Proof of concept. Not medical advice.": "Wersja testowa. To nie jest porada medyczna.",
     "HRV-guided training (Javaloyes 2020)": "Trening sterowany HRV (Javaloyes 2020)",
     "Fatigue debt (experimental)": "Dług zmęczeniowy (eksperymentalny)",

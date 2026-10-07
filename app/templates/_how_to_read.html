@@ -1,5 +1,4 @@
-<details class="card guide">
-  <summary>{{ t("How to read this") }}</summary>
+<div class="card guide">
 {% if model.key == 'debt' %}
 {% set fo = (lines.fo if lines else params.amber)|round|int %}{% set limit = (lines.limit if lines else params.red * params.limit_share)|round|int %}{% set danger = (lines.danger if lines else params.red)|round|int %}
 {% if lang == 'pl' %}
@@ -149,4 +148,4 @@
 {% endif %}
 {% endif %}
   <p class="muted small" style="margin-bottom:0">{{ t("Proof of concept. Not medical advice.") }}</p>
-</details>
+</div>
