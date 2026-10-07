@@ -175,6 +175,13 @@ if (days.length && modelKey === "debt") {
     .map(s => `<span><i style="background:${STATE_COLORS[s]}"></i>${stateName(s)}</span>`).join('');
 }
 if (days.length && modelKey !== "debt") {
+  var rhrRange = (() => {
+    const v = days.map(d => d.rhr).filter(r => r != null).sort((a, b) => a - b);
+    if (!v.length) return [0, 1];
+    const q = p => v[Math.min(v.length - 1, Math.floor(p * v.length))];
+    const lo = q(0.02), hi = q(0.98), pad = Math.max(2, (hi - lo) * 0.15);
+    return [Math.floor(lo - pad), Math.ceil(hi + pad)];
+  })();
   const css = getComputedStyle(document.documentElement);
   const c = n => css.getPropertyValue('--' + n).trim();
   const x = days.map(d => d.date);
@@ -189,7 +196,12 @@ if (days.length && modelKey !== "debt") {
     {x, y: days.map(d => d.hrv_week), yaxis: 'y2', mode: 'lines+markers', line: {color: c('accent')},
      marker: {size: 5, color: days.map(d => col(d.signal))}, name: L['HRV 7-day']},
     {x, y: days.map(d => d.cv), yaxis: 'y3', mode: 'lines', line: {color: '#8a63d2'}, name: L['CV 7-day (%)']},
-    {x, y: days.map(d => d.rhr), yaxis: 'y4', mode: 'markers', marker: {size: 4, color: c('red'), opacity: .5}, name: L['Resting HR']},
+    // Readings outside the usual spread (a 100 after a bad night or a strap glitch) sit on the edge
+    // as triangles, so they don't squash everyone else into a flat line.
+    {x, y: days.map(d => d.rhr == null ? null : Math.min(Math.max(d.rhr, rhrRange[0]), rhrRange[1])), yaxis: 'y4', mode: 'markers',
+     marker: {size: days.map(d => d.rhr != null && (d.rhr < rhrRange[0] || d.rhr > rhrRange[1]) ? 7 : 4), color: c('red'), opacity: .5,
+              symbol: days.map(d => d.rhr == null ? 'circle' : d.rhr > rhrRange[1] ? 'triangle-up' : d.rhr < rhrRange[0] ? 'triangle-down' : 'circle')},
+     customdata: days.map(d => d.rhr), hovertemplate: L['Resting HR'] + ' %{customdata}<extra></extra>', name: L['Resting HR']},
   ];
   const axis = (domain, title) => ({domain, title: {text: title}, gridcolor: c('line'), zerolinecolor: c('line')});
   Plotly.newPlot('chart', traces, {
@@ -199,7 +211,7 @@ if (days.length && modelKey !== "debt") {
     yaxis: {...axis([0.92, 1], ''), showticklabels: false, range: [0, 1]},
     yaxis2: axis([0.42, 0.88], 'HRV (ms)'),
     yaxis3: {...axis([0.22, 0.38], 'CV %'), rangemode: 'tozero'},
-    yaxis4: axis([0, 0.18], L['Resting HR']),
+    yaxis4: {...axis([0, 0.18], L['Resting HR']), range: rhrRange},
   }, {responsive: true, displaylogo: false});
 }
 </script>
