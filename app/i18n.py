@@ -137,6 +137,14 @@ PL: dict[str, str] = {
     "Days to clear": "Dni do spłaty",
     "Last full recovery": "Ostatnia pełna regeneracja",
     "Personal thresholds": "Osobiste progi",
+    "You now against your usual": "Ty teraz a Twoja norma",
+    "Last 7 days": "Ostatnie 7 dni",
+    "Your usual": "Zwykle",
+    "1 point ≈": "1 punkt ≈",
+    "Points": "Punkty",
+    "Stress": "Stres",
+    "norms.how": "Średnia z ostatnich 7 dni porównana z Twoją zwykłą średnią z 90 dni. Prawie dokładnie jak zwykle = 0 punktów; każde „1 punkt ≈” dalej to punkt więcej, najwyżej ±3. HRV wyżej to plus, tętno i stres wyżej to minus. Suma punktów to dzisiejsza gotowość.",
+    "tip.norms": "„Zwykle” to Twoja średnia z ostatnich 90 dni. „1 punkt ≈” to pół Twojego odchylenia standardowego — tyle trzeba odbiec od średniej, żeby dostać kolejny punkt gotowości. Kto ma stabilne pomiary, ma mały krok i szybciej dostaje punkty.",
     "HRV variation": "Zmienność HRV",
     "HRV 7-day": "HRV 7-dniowe",
     "Normal range": "Norma",
@@ -295,6 +303,8 @@ PL: dict[str, str] = {
 
 # English texts that are keys rather than the text itself.
 EN: dict[str, str] = {
+    "norms.how": "The last 7 days' average against your usual 90-day average. Almost exactly as usual = 0 points; each further \"1 point ≈\" away is one more point, at most ±3. Higher HRV is a plus, higher resting HR and stress a minus. The points add up to today's readiness.",
+    "tip.norms": "\"Usual\" is your average of the last 90 days. \"1 point ≈\" is half your standard deviation — how far from the average you have to be for each further readiness point. Steady readings mean a small step, so points come sooner.",
     "tip.day": "The latest day with a measurement; today's decision rests on it.",
     "tip.hrv_week": "Average HRV of the last 7 days (night RMSSD, averaged as logarithms, shown in ms). Single days jump; the average shows the trend.",
     "tip.normal": "Your normal range: mean ± 0.5 standard deviation (the smallest worthwhile change). Taken from the first 2 weeks, then every 4 weeks from the 4 before.",

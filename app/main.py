@@ -761,7 +761,30 @@ def _latest(m: models.Model, result: pd.DataFrame, lang: str = "en") -> dict | N
         "advice": describe.advice(m.key, row["signal"], m.advice[row["signal"]], lang),
         "state": describe.state(row["state"], lang),
         "stats": stats,
+        "norms": _norms(row) if m.key == "debt" else [],
     }
+
+
+def _norms(row) -> list[dict]:
+    """
+    Each metric's last 7 days against the athlete's usual (their 90-day average), how much one
+    readiness point is in the metric's own unit, and the points that gives.
+    """
+    rows = []
+    # Resting HR moves in fractions of a beat, so it keeps a decimal; otherwise "51 against 51" scores a point.
+    for key, label, unit, digits in (("hrv", "HRV", "ms", 0), ("rhr", "Resting HR", "bpm", 1), ("stress", "Stress", "", 0)):
+        now, lo, hi, points = (row.get(f"{key}_{part}") for part in ("week", "low", "high", "points"))
+        if pd.isna(now) or pd.isna(lo):
+            continue
+        # low/high are the average ± half a standard deviation; HRV's were taken back from logs, so its
+        # average is their geometric mean. Half a standard deviation is one readiness point.
+        usual = (lo * hi) ** 0.5 if key == "hrv" else (lo + hi) / 2
+        rows.append({
+            "label": label, "unit": unit, "now": f"{now:.{digits}f}", "usual": f"{usual:.{digits}f}",
+            "step": f"{(hi - lo) / 2:.1f}".rstrip("0").rstrip("."),
+            "points": int(points) if pd.notna(points) else 0,
+        })
+    return rows
 
 
 def _last_recovery(result: pd.DataFrame) -> str | None:

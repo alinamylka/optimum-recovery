@@ -31,6 +31,22 @@
     <div><span>{{ t("Day") }}{{ info("tip.day") }}</span>{{ today.date }}</div>
     {% for label, value in today.stats %}<div><span>{{ t(label) }}{% if label in stat_tips %}{{ info(stat_tips[label]) }}{% endif %}</span>{{ t(value) if value == "—" else value }}</div>{% endfor %}
   </div>
+  {% if today.norms %}
+  <h4 class="norms-title">{{ t("You now against your usual") }}{{ info("tip.norms") }}</h4>
+  <div class="scroll"><table class="norms">
+    <tr><th></th><th>{{ t("Last 7 days") }}</th><th>{{ t("Your usual") }}</th><th>{{ t("1 point ≈") }}</th><th>{{ t("Points") }}</th></tr>
+    {% for n in today.norms %}
+    <tr>
+      <td>{{ t(n.label) }}</td>
+      <td><b>{{ n.now }}</b> {{ n.unit }}</td>
+      <td class="muted">{{ n.usual }} {{ n.unit }}</td>
+      <td class="muted">± {{ n.step }} {{ n.unit }}</td>
+      <td class="{{ 'pos' if n.points > 0 else 'neg' if n.points < 0 else 'muted' }}">{{ '%+d'|format(n.points) if n.points else '0' }}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  <p class="muted small" style="margin-bottom:0">{{ t("norms.how") }}</p>
+  {% endif %}
 </div>
 
 <div class="card"><div id="chart" style="height:{{ 760 if model.key == 'debt' else 700 }}px"></div>{% if model.key == 'debt' %}<div id="legend" class="legend"></div>{% endif %}</div>
