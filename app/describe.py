@@ -15,13 +15,14 @@ STATES = {
     "Inside the normal range": "W normie",
     "Below the normal range": "Poniżej normy",
     "Above the normal range": "Powyżej normy",
-    "Danger: NFO risk": "Niebezpiecznie: ryzyko NFO",
-    "Rebound: HRV spike while in debt": "Odbicie: skok HRV mimo długu",
+    "NFO / danger": "NFO / niebezpiecznie",
+    "Borderline exhaustion": "Na granicy wyczerpania",
+    "Autonomic rebound (fake-out)": "Odbicie autonomiczne (fałszywa świeżość)",
     "Functional overreaching": "Przeciążenie funkcjonalne",
-    "Past the adaptation limit": "Ponad granicą adaptacji",
-    "Chronic creep: HRV trending low": "Pełzające zmęczenie: HRV nisko",
-    "Fresh": "Świeżość",
-    "Absorbing load": "Obciążenie przyswajane",
+    "Chronic creep": "Pełzające zmęczenie",
+    "Peak freshness": "Szczytowa świeżość",
+    "Standard loading (parasympathetic)": "Zwykłe obciążenie (przywspółczulne)",
+    "Standard loading (sympathetic)": "Zwykłe obciążenie (współczulne)",
     "No data": "Brak danych",
 }
 
@@ -276,10 +277,10 @@ def _debt_week(w: pd.DataFrame, previous: pd.DataFrame | None, t: dict) -> str:
         parts.append(t["capacity_up" if after > before else "capacity_down"].format(before=before, after=after))
     states = w["state"].value_counts()
     warned = False
-    if states.get("Rebound: HRV spike while in debt"):
+    if states.get("Autonomic rebound (fake-out)"):
         parts.append(t["rebound"])
         warned = True
-    if states.get("Chronic creep: HRV trending low"):
+    if states.get("Chronic creep"):
         parts.append(t["creep"])
         warned = True
     if w["recovered"].any():

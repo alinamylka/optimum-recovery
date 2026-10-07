@@ -1,76 +1,82 @@
 <div class="card guide">
 {% if model.key == 'debt' %}
-{% set fo = (lines.fo if lines else params.amber)|round|int %}{% set limit = (lines.limit if lines else params.red * params.limit_share)|round|int %}{% set danger = (lines.danger if lines else params.red)|round|int %}
+{% set fo = (lines.fo if lines else params.amber)|round|int %}{% set limit = (lines.limit if lines else params.capacity * params.limit_share)|round|int %}{% set danger = (lines.danger if lines else params.capacity)|round|int %}
 {% if lang == 'pl' %}
-  <p class="lead">Dług zmęczeniowy to własny, eksperymentalny wskaźnik: ile zmęczenia się nazbierało i czy organizm nadąża z regeneracją.</p>
+  <p class="lead">Ten model odtwarza metodę z wykresów, które Arkadiusz dostaje od jej autora. Kod autora nie jest publiczny, więc wzory dopasowałyśmy do jego wykresów na danych Aliny z tego samego okresu.</p>
 
   <h4>Gotowość dnia (−9…+9)</h4>
-  <p>Każdego dnia trzy pomiary są porównywane z własną bazą zawodnika z ostatnich 60 dni:</p>
+  <p>Każda z trzech metryk dostaje od −3 do +3 punktów: średnia z ostatnich {{ params.acute_days }} dni w porównaniu z własną bazą zawodnika z {{ params.baseline_days }} dni, jeden punkt na każde pół odchylenia standardowego.</p>
   <div class="weights">
-    <div><b>50%</b><span>HRV</span></div>
-    <div><b>30%</b><span>tętno spoczynkowe</span></div>
-    <div><b>20%</b><span>stres</span></div>
+    <div><b>±3</b><span>HRV (wyżej = lepiej)</span></div>
+    <div><b>±3</b><span>tętno spoczynkowe (niżej = lepiej)</span></div>
+    <div><b>±3</b><span>stres (niżej = lepiej)</span></div>
   </div>
-  <p>Wynik ujemny — organizm wygląda gorzej niż zwykle, dodatni — lepiej.</p>
+  <p>Gotowość to ich suma. Słupki są zielone do ±2, żółte od ±3, czerwone od ±6 — także w górę: bardzo wysoka gotowość bywa reakcją na przeciążenie, a nie świeżością.</p>
 
-  <h4>Jak zmienia się dług</h4>
+  <h4>Dług zmęczeniowy</h4>
   <ul>
-    <li><b>Dzień ujemny</b> dokłada do długu — im gorzej, tym więcej.</li>
-    <li><b>Dzień dodatni</b> spłaca dług.</li>
-    <li><b>Dzień neutralny</b> — dług sam maleje o ok. 8%, zmęczenie wygasa.</li>
-    <li><b>Głęboki dług</b> (powyżej progu niebezpiecznego) spłaca się wolniej: wyczerpany organizm regeneruje się mniej na każdy dobry dzień.</li>
+    <li>To <b>suma ujemnej gotowości z ostatnich {{ params.area_days }} dni</b> — „pole zmęczenia” pod kreską zera. Dzień −4 dokłada 4, dni dodatnie nic nie dokładają.</li>
+    <li>Po {{ params.area_days }} dniach bez żadnego ujemnego dnia dług spada do zera: to <b>pełna regeneracja</b> (zielona przerywana linia na wykresie).</li>
+    <li>„Dni do spłaty” mówią, ile zostało do zera, jeśli nie będzie już złego dnia.</li>
   </ul>
 
   <h4>Osobiste progi</h4>
-  <p>Ten sam dług dla jednej osoby jest zdrowym bodźcem, dla innej już przeciążeniem — dlatego każdy zawodnik ma własne progi, wyliczane z jego danych. Na wykresie długu to trzy przerywane linie{% if lines %}; dziś: <b>{{ fo }} / {{ limit }} / {{ danger }}</b>{% endif %}.</p>
+  <p>Ten sam dług dla jednej osoby jest zdrowym bodźcem, dla innej już przeciążeniem — dlatego każdy zawodnik ma własne progi. Na wykresie długu to trzy przerywane linie{% if lines %}; dziś: <b>{{ fo }} / {{ limit }} / {{ danger }}</b>{% endif %}.</p>
   <div class="levels">
-    <div class="level"><span class="dot green"></span><b>0 – {{ fo }}</b><span>Obciążenie przyswajane na bieżąco. 0 = pełna regeneracja (zielona pionowa linia na wykresie).</span></div>
+    <div class="level"><span class="dot green"></span><b>0 – {{ fo }}</b><span>Obciążenie przyswajane na bieżąco.</span></div>
     <div class="level"><span class="dot amber"></span><b>{{ fo }} – {{ limit }}</b><span><b>Przeciążenie funkcjonalne.</b> Dobry bodziec: organizm się przystosowuje i rośnie — pod warunkiem, że potem przyjdzie pełna regeneracja. To strefa, w której trenuje się, żeby progi rosły.</span></div>
-    <div class="level"><span class="dot amber"></span><b>{{ limit }} – {{ danger }}</b><span><b>Ponad granicą adaptacji.</b> Obciążenie allostatyczne: koszt utrzymania równowagi przewyższa zyski i organizm zaczyna się degradować zamiast rosnąć. Trenuj spokojnie, bez dokładania obciążenia.</span></div>
+    <div class="level"><span class="dot amber"></span><b>{{ limit }} – {{ danger }}</b><span><b>Granica adaptacji przekroczona.</b> Obciążenie allostatyczne: koszt utrzymania równowagi przewyższa zyski i organizm zaczyna się degradować zamiast rosnąć. Trenuj spokojnie, bez dokładania obciążenia.</span></div>
     <div class="level"><span class="dot red"></span><b>&gt; {{ danger }}</b><span><b>Ponad progiem niebezpiecznym.</b> Koszt przekracza zasoby organizmu: oszczędza on na wzroście, regeneracji i naprawie, a stąd blisko do kontuzji, choroby i przeciążenia niefunkcjonalnego. Tylko lekko albo odpoczynek.</span></div>
   </div>
 
   <h4>Jak zmieniają się progi</h4>
   <ul>
-    <li><b>Start:</b> próg niebezpieczny {{ params.red|int }} dla wszystkich, potem progi uczą się z tego, jak zawodnik wychodzi z kolejnych bloków. Granica adaptacji to zawsze {{ (params.limit_share * 100)|round|int }}% progu niebezpiecznego, przeciążenie funkcjonalne {{ (params.amber / params.red * 100)|round|int }}%.</li>
-    <li><b>Szybki powrót</b> — blok przekroczył próg przeciążenia funkcjonalnego, a dług wrócił do zera najwyżej w {{ params.fast_recovery|int }}× tyle dni, ile zajęłyby same lekkie dni: organizm się zaadaptował, progi rosną.</li>
-    <li><b>Powolny powrót</b> — ponad {{ params.slow_recovery|int }}× dłużej: blok kosztował więcej, niż organizm miał, progi spadają.</li>
+    <li><b>Start:</b> próg niebezpieczny {{ params.capacity|int }} dla wszystkich (jak u autora: {{ params.amber|round|int }} / {{ (params.capacity * params.limit_share)|round|int }} / {{ params.capacity|int }}). Granica adaptacji to zawsze {{ (params.limit_share * 100)|round|int }}% progu niebezpiecznego, przeciążenie funkcjonalne {{ (params.fo_share * 100)|round|int }}%.</li>
+    <li><b>Szybki powrót</b> — blok przekroczył próg przeciążenia funkcjonalnego, a od jego szczytu do zera minęło najwyżej {{ params.fast_recovery }} dni: organizm się zaadaptował, progi rosną.</li>
+    <li><b>Powolny powrót</b> — {{ params.slow_recovery }} dni i więcej: blok kosztował więcej, niż organizm miał, progi spadają.</li>
     <li><b>Przeciągnięte przeciążenie</b> — ponad {{ params.linger_days }} dni z rzędu powyżej progu przeciążenia funkcjonalnego: progi spadają o {{ (params.linger_loss * 100)|round|int }}% dziennie.</li>
     <li><b>Niewykorzystana pojemność</b> — to, co zawodnik zyskał ponad start, powoli wygasa w dni bez długu.</li>
   </ul>
   <p>Spadające progi to sygnał, że trening był za ciężki dla tego organizmu: kolejne bloki zaleca się lżejsze, a obciążenie zwiększać dopiero, gdy progi znów zaczną rosnąć.</p>
 
-  <h4>Na co uważać</h4>
-  <div class="warnings">
-    <div><b>Odbicie</b><span>Nagły skok HRV, gdy dług wciąż jest. Często to reakcja na przeciążenie, a nie świeżość — nie spłaca długu.</span></div>
-    <div><b>Ukryty spadek</b><span>Tygodniowa średnia HRV poniżej normy, choć żaden pojedynczy dzień nie wygląda źle.</span></div>
+  <h4>Zmienność HRV (0…9)</h4>
+  <p>Jak bardzo HRV skakało z dnia na dzień przez ostatnie 7 dni, w porównaniu ze zwykłą zmiennością zawodnika: 4,5 = jak zwykle, 3–6 = norma (szary pas). Wysoka zmienność przy spadającym HRV widziano przed przetrenowaniem (Plews 2012).</p>
+
+  <h4>Stan dnia (kolor tła)</h4>
+  <div class="levels">
+    <div class="level"><span class="dot green"></span><b>Zwykłe obciążenie</b><span>Dług poniżej progu przeciążenia. <b>Przywspółczulne</b>, gdy HRV jest w normie lub wyżej (organizm się regeneruje), <b>współczulne</b>, gdy HRV jest niżej (organizm pracuje pod obciążeniem).</span></div>
+    <div class="level"><span class="dot green"></span><b>Szczytowa świeżość</b><span>Zero długu i gotowość od +3: dobry moment na mocną jednostkę albo start.</span></div>
+    <div class="level"><span class="dot amber"></span><b>Pełzające zmęczenie</b><span>HRV osuwa się poniżej normy, choć tętno jeszcze nie — zmęczenie, którego żaden pojedynczy dzień nie pokazuje.</span></div>
+    <div class="level"><span class="dot amber"></span><b>Przeciążenie funkcjonalne</b><span>Dług między progiem przeciążenia a granicą adaptacji.</span></div>
+    <div class="level"><span class="dot amber"></span><b>Odbicie autonomiczne</b><span>HRV skacze mocno w górę w środku bloku obciążeń. To „fałszywa świeżość” — reakcja na przeciążenie (Le Meur 2013), a nie regeneracja.</span></div>
+    <div class="level"><span class="dot amber"></span><b>Na granicy wyczerpania</b><span>Dług ponad granicą adaptacji.</span></div>
+    <div class="level"><span class="dot red"></span><b>NFO / niebezpiecznie</b><span>Dług ponad progiem niebezpiecznym: ryzyko przeciążenia niefunkcjonalnego.</span></div>
   </div>
 
-  <p class="muted small">Podstawy: zmęczenie, które narasta i wygasa (Banister i Calvert 1976), definicje przeciążenia (Meeusen 2013), odbicie HRV (Le Meur 2013), obciążenie allostatyczne i granica adaptacji (McEwen 1998). Wzór, wagi i zasady, według których progi rosną i maleją, są własne i wymagają kalibracji — stąd „eksperymentalny”.</p>
+  <p class="muted small">Struktura (punkty metryk, pole z 8 dni, progi 44% / 77% / 100%, stany) pochodzi z wykresów autora metody; liczby, które nie dały się odczytać — z naszego dopasowania. Podstawy: HRV względem własnej bazy (Plews 2013), zmienność HRV (Plews 2012), przeciążenie (Meeusen 2013), odbicie HRV (Le Meur 2013), obciążenie allostatyczne (McEwen 1998). Wymaga kalibracji — stąd „eksperymentalny”.</p>
 {% else %}
-  <p class="lead">Fatigue debt is our own, experimental measure: how much fatigue has built up and whether the body keeps up with recovery.</p>
+  <p class="lead">This model reconstructs the method behind the charts Arkadiusz gets from its author. The author's code is not public, so the formulas were fitted to his charts on Alina's data from the same period.</p>
 
   <h4>Daily readiness (−9…+9)</h4>
-  <p>Every day three readings are compared with the athlete's own baseline of the last 60 days:</p>
+  <p>Each of three metrics scores −3 to +3: its average over the last {{ params.acute_days }} days against the athlete's own {{ params.baseline_days }}-day baseline, one point per half standard deviation.</p>
   <div class="weights">
-    <div><b>50%</b><span>HRV</span></div>
-    <div><b>30%</b><span>resting HR</span></div>
-    <div><b>20%</b><span>stress</span></div>
+    <div><b>±3</b><span>HRV (higher = better)</span></div>
+    <div><b>±3</b><span>resting HR (lower = better)</span></div>
+    <div><b>±3</b><span>stress (lower = better)</span></div>
   </div>
-  <p>Negative — the body looks worse than usual, positive — better.</p>
+  <p>Readiness is their sum. Bars are green up to ±2, amber from ±3, red from ±6 — upwards too: a very high readiness can be the body reacting to overload rather than freshness.</p>
 
-  <h4>How the debt moves</h4>
+  <h4>Fatigue debt</h4>
   <ul>
-    <li><b>A negative day</b> adds to the debt — the worse, the more.</li>
-    <li><b>A positive day</b> pays it off.</li>
-    <li><b>A neutral day</b> — the debt shrinks by about 8% on its own, fatigue fades.</li>
-    <li><b>A deep debt</b> (above the danger threshold) clears more slowly: an exhausted body recovers less per good day.</li>
+    <li>It is <b>the negative readiness of the last {{ params.area_days }} days added up</b> — the "fatigue area" below the zero line. A −4 day adds 4; positive days add nothing.</li>
+    <li>After {{ params.area_days }} days without a single negative day the debt is back to zero: a <b>full recovery</b> (the green dotted line on the chart).</li>
+    <li>"Days to clear" says how long until zero if no further day is negative.</li>
   </ul>
 
   <h4>Personal thresholds</h4>
-  <p>The same debt is a healthy stimulus for one athlete and overload for another, so each athlete gets their own thresholds, learnt from their data. They are the three dashed lines on the debt chart{% if lines %}; today: <b>{{ fo }} / {{ limit }} / {{ danger }}</b>{% endif %}.</p>
+  <p>The same debt is a healthy stimulus for one athlete and overload for another, so each athlete gets their own thresholds. They are the three dashed lines on the debt chart{% if lines %}; today: <b>{{ fo }} / {{ limit }} / {{ danger }}</b>{% endif %}.</p>
   <div class="levels">
-    <div class="level"><span class="dot green"></span><b>0 – {{ fo }}</b><span>Load absorbed day to day. 0 = full recovery (green vertical line on the chart).</span></div>
+    <div class="level"><span class="dot green"></span><b>0 – {{ fo }}</b><span>Load absorbed day to day.</span></div>
     <div class="level"><span class="dot amber"></span><b>{{ fo }} – {{ limit }}</b><span><b>Functional overreaching.</b> A good stimulus: the body adapts and grows — as long as a full recovery follows. This is the zone to train in to raise the thresholds.</span></div>
     <div class="level"><span class="dot amber"></span><b>{{ limit }} – {{ danger }}</b><span><b>Past the adaptation limit.</b> Allostatic load: the cost of keeping the balance outweighs the gains and the body starts to wear down instead of growing. Train calmly, add no load.</span></div>
     <div class="level"><span class="dot red"></span><b>&gt; {{ danger }}</b><span><b>Past danger.</b> The cost exceeds what the body has: it cuts back on growth, recovery and repair, which leads towards injury, illness and non-functional overreaching. Easy only, or rest.</span></div>
@@ -78,21 +84,29 @@
 
   <h4>How the thresholds move</h4>
   <ul>
-    <li><b>Start:</b> danger at {{ params.red|int }} for everyone; from then on the thresholds learn from how the athlete comes out of each block. The adaptation limit is always {{ (params.limit_share * 100)|round|int }}% of danger, functional overreaching {{ (params.amber / params.red * 100)|round|int }}%.</li>
-    <li><b>Quick recovery</b> — a block went past functional overreaching and the debt was back to zero within {{ params.fast_recovery|int }}× the days easy days alone would take: the body adapted, the thresholds rise.</li>
-    <li><b>Slow recovery</b> — more than {{ params.slow_recovery|int }}× as long: the block cost more than the body had, the thresholds fall.</li>
+    <li><b>Start:</b> danger at {{ params.capacity|int }} for everyone (as in the author's charts: {{ params.amber|round|int }} / {{ (params.capacity * params.limit_share)|round|int }} / {{ params.capacity|int }}). The adaptation limit is always {{ (params.limit_share * 100)|round|int }}% of danger, functional overreaching {{ (params.fo_share * 100)|round|int }}%.</li>
+    <li><b>Quick recovery</b> — a block went past functional overreaching and was back to zero at most {{ params.fast_recovery }} days after its peak: the body adapted, the thresholds rise.</li>
+    <li><b>Slow recovery</b> — {{ params.slow_recovery }} days or more: the block cost more than the body had, the thresholds fall.</li>
     <li><b>Drawn-out overload</b> — more than {{ params.linger_days }} days in a row past functional overreaching: the thresholds fall by {{ (params.linger_loss * 100)|round|int }}% a day.</li>
     <li><b>Unused capacity</b> — whatever was gained above the start slowly fades on days without debt.</li>
   </ul>
   <p>Falling thresholds say the training was too hard for this body: lighter blocks are advised, adding load only once the thresholds start rising again.</p>
 
-  <h4>Watch out for</h4>
-  <div class="warnings">
-    <div><b>Rebound</b><span>A sudden HRV jump while still in debt. Often the body reacting to overload, not freshness — it doesn't pay off the debt.</span></div>
-    <div><b>Chronic creep</b><span>The weekly HRV average sits below normal although no single day looks bad.</span></div>
+  <h4>HRV variation (0…9)</h4>
+  <p>How much HRV jumped from day to day over the last 7 days, against the athlete's usual variation: 4.5 = as usual, 3–6 = normal (the grey band). High variation with falling HRV was seen before overtraining (Plews 2012).</p>
+
+  <h4>State of the day (background colour)</h4>
+  <div class="levels">
+    <div class="level"><span class="dot green"></span><b>Standard loading</b><span>Debt below functional overreaching. <b>Parasympathetic</b> when HRV is normal or higher (the body is recovering), <b>sympathetic</b> when it is lower (working under load).</span></div>
+    <div class="level"><span class="dot green"></span><b>Peak freshness</b><span>No debt and readiness of +3 or more: a good moment for a key session or a race.</span></div>
+    <div class="level"><span class="dot amber"></span><b>Chronic creep</b><span>HRV sliding below normal while resting HR isn't yet — fatigue no single day shows.</span></div>
+    <div class="level"><span class="dot amber"></span><b>Functional overreaching</b><span>Debt between functional overreaching and the adaptation limit.</span></div>
+    <div class="level"><span class="dot amber"></span><b>Autonomic rebound</b><span>HRV jumps well up in the middle of a block. A "fake-out" — the body reacting to overload (Le Meur 2013), not recovery.</span></div>
+    <div class="level"><span class="dot amber"></span><b>Borderline exhaustion</b><span>Debt past the adaptation limit.</span></div>
+    <div class="level"><span class="dot red"></span><b>NFO / danger</b><span>Debt past danger: risk of non-functional overreaching.</span></div>
   </div>
 
-  <p class="muted small">Foundations: fatigue that builds and fades (Banister & Calvert 1976), definitions of overreaching (Meeusen 2013), HRV rebound (Le Meur 2013), allostatic load and the adaptation limit (McEwen 1998). The formula, weights and the rules by which the thresholds rise and fall are our own and need calibrating — hence "experimental".</p>
+  <p class="muted small">The structure (metric points, the 8-day area, thresholds at 44% / 77% / 100%, the states) comes from the method author's charts; numbers that could not be read off them come from our fit. Foundations: HRV against one's own baseline (Plews 2013), HRV variation (Plews 2012), overreaching (Meeusen 2013), HRV rebound (Le Meur 2013), allostatic load (McEwen 1998). Needs calibrating — hence "experimental".</p>
 {% endif %}
 {% else %}
 {% if lang == 'pl' %}

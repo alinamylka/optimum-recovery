@@ -1,14 +1,24 @@
 import numpy as np
 import pandas as pd
 
-from app.model import Params, analyse, days_to_clear
+from app.model import Params, analyse
 from app.sources import parse_trainingpeaks
 
 
-def steady(days=90, hrv=60.0, rhr=50.0, seed=1):
+def steady(days=90, hrv=60.0, rhr=50.0, stress=30.0, seed=1):
     rng = np.random.default_rng(seed)
     idx = pd.date_range("2026-01-01", periods=days, freq="D")
-    return pd.DataFrame({"hrv": hrv + rng.normal(0, 3, days), "rhr": rhr + rng.normal(0, 1, days)}, index=idx)
+    return pd.DataFrame(
+        {"hrv": hrv + rng.normal(0, 3, days), "rhr": rhr + rng.normal(0, 1, days), "stress": stress + rng.normal(0, 3, days)},
+        index=idx,
+    )
+
+
+def overload(data, block, hrv=15, rhr=6, stress=12):
+    data.iloc[block, 0] -= hrv
+    data.iloc[block, 1] += rhr
+    data.iloc[block, 2] += stress
+    return data
 
 
 def test_steady_athlete_stays_mostly_green():
@@ -18,54 +28,53 @@ def test_steady_athlete_stays_mostly_green():
     assert (signals == "red").sum() == 0
 
 
-def test_overload_builds_debt_and_then_clears():
-    data = steady(120)
-    block = slice(60, 75)
-    data.iloc[block, 0] -= 15  # HRV drops
-    data.iloc[block, 1] += 6  # RHR rises
-    result = analyse(data)
-    assert result["debt"].iloc[74] >= Params().red
+def test_readiness_is_three_metric_scores_added_up():
+    result = analyse(overload(steady(120), slice(60, 75)))
+    points = result[["hrv_points", "rhr_points", "stress_points"]]
+    assert points.abs().max().max() <= 3
+    assert result["readiness"].dropna().eq(points.loc[result["readiness"].notna()].fillna(0).sum(axis=1)).all()
+    assert result["readiness"].iloc[70] == -9
+
+
+def test_debt_is_the_negative_readiness_of_the_last_8_days():
+    result = analyse(overload(steady(120), slice(60, 75)))
+    area = (-result["readiness"]).clip(lower=0).fillna(0).rolling(Params().area_days, min_periods=1).sum()
+    assert np.allclose(result["debt"], area.round(1))
+    assert result["debt"].iloc[74] >= result["danger"].iloc[74]
     assert result["signal"].iloc[74] == "red"
+    # Eight days without a negative day and the debt is gone: a full recovery.
     assert result["recovered"].iloc[75:].any()
-    assert result["debt"].iloc[-1] < 1
+    assert result["debt"].iloc[-1] == 0
+
+
+def test_days_to_clear_counts_down_to_the_end_of_the_window():
+    result = analyse(overload(steady(120), slice(60, 75)))
+    after = result.iloc[75:110]
+    clear = after.loc[after["debt"] > 0, "days_to_clear"]
+    assert clear.max() <= Params().area_days
+    assert (result.loc[result["debt"] == 0, "days_to_clear"] == 0).all()
 
 
 def test_quick_recovery_raises_the_personal_thresholds():
-    data = steady(160)
-    data.iloc[60:68, 0] -= 12  # a short hard block, then back to normal
-    data.iloc[60:68, 1] += 4
-    result = analyse(data)
-    start = Params().red
-    assert result["debt"].iloc[60:75].max() > start * Params().amber / Params().red  # it went past FO
-    assert result["danger"].iloc[-1] > start
-    assert (result["fo"] / result["danger"]).round(2).eq(round(Params().amber / Params().red, 2)).all()
+    result = analyse(overload(steady(160), slice(60, 64), hrv=12, rhr=4, stress=10))
+    assert result["debt"].iloc[60:80].max() > Params().capacity * Params().fo_share  # it went past FO
+    assert result["danger"].iloc[-1] > Params().capacity
+    assert (result["fo"] / result["danger"]).round(2).eq(Params().fo_share).all()
 
 
 def test_drawn_out_overload_lowers_the_personal_thresholds():
-    data = steady(200)
-    data.iloc[60:130, 0] -= 10  # weeks of suppressed HRV without a way back
-    data.iloc[60:130, 1] += 4
-    result = analyse(data)
-    assert result["danger"].iloc[129] < Params().red
+    result = analyse(overload(steady(200), slice(60, 130), hrv=10, rhr=4, stress=8))
+    assert result["danger"].iloc[129] < Params().capacity
     assert result["danger"].min() >= Params().capacity_min
-    assert "Past the adaptation limit" in set(result["state"]) or "Danger: NFO risk" in set(result["state"])
+    assert {"Borderline exhaustion", "NFO / danger"} & set(result["state"])
 
 
 def test_week_summary_names_the_personal_lines():
     from app import describe
 
-    data = steady(120)
-    data.iloc[60:75, 0] -= 15
-    data.iloc[60:75, 1] += 6
-    result = analyse(data)
-    week = result.iloc[70:77]
-    text = describe.week(week, result.iloc[63:70], "en")
+    result = analyse(overload(steady(120), slice(60, 75)))
+    text = describe.week(result.iloc[70:77], result.iloc[63:70], "en")
     assert "danger threshold" in text
-
-
-def test_days_to_clear():
-    assert days_to_clear(0.5) == 0
-    assert days_to_clear(25) > days_to_clear(12) > 0
 
 
 def test_trainingpeaks_prefers_morning_reading():

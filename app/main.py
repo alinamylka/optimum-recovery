@@ -18,7 +18,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import auth, db, describe, hrv_guided, i18n, mailer, models
 from .auth import Login
-from .model import Params, params_dict
+from .model import STATE_SIGNALS, Params, params_dict
 from .sources import fetch_intervals, fetch_intervals_name, fetch_intervals_profile, parse_export
 
 app = FastAPI(title="Optimum Recovery")
@@ -444,6 +444,7 @@ def _athlete_page(
             # Days with HRV so far: until there are two weeks of them both models are still building a baseline.
             "hrv_days": int(data["hrv"].notna().sum()) if "hrv" in data else 0,
             "baseline_days": hrv_guided.BASELINE_DAYS,
+            "state_names": {s: describe.state(s, me.language) for s in STATE_SIGNALS},
             "error": error,
             "notice": notice,
             "mine": is_coach,
@@ -733,11 +734,12 @@ def _latest(m: models.Model, result: pd.DataFrame, lang: str = "en") -> dict | N
     row = known.iloc[-1]
     if m.key == "debt":
         stats = [
-            ("Readiness", f"{int(row['readiness'])} / 9"),
+            ("Readiness", f"{int(row['readiness']):+d} / 9"),
             ("Fatigue debt", row["debt"]),
-            ("Days to clear (easy days)", f"≈ {int(row['days_to_clear'])}" if row["days_to_clear"] else "—"),
+            ("Days to clear", f"≈ {int(row['days_to_clear'])}" if row["days_to_clear"] else "—"),
             ("Last full recovery", _last_recovery(result) or "—"),
             ("Personal thresholds", f"{row['fo']:.0f} / {row['limit']:.0f} / {row['danger']:.0f}"),
+            ("HRV variation", f"{row['hrv_variation']:.1f} / 9" if pd.notna(row["hrv_variation"]) else "—"),
         ]
     else:
         stats = [

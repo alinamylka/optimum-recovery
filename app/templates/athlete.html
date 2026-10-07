@@ -3,9 +3,9 @@
 {% block body %}
 {% include "_athlete_header.html" %}
 {% macro info(key) %}<span class="info" tabindex="0" data-tip="{{ t(key) }}">i</span>{% endmacro %}
-{% set stat_tips = {"Readiness": "tip.readiness", "Fatigue debt": "tip.debt", "Days to clear (easy days)": "tip.days_to_clear",
+{% set stat_tips = {"Readiness": "tip.readiness", "Fatigue debt": "tip.debt", "Days to clear": "tip.days_to_clear",
                     "Last full recovery": "tip.last_recovery", "Personal thresholds": "tip.thresholds", "HRV 7-day": "tip.hrv_week", "Normal range": "tip.normal",
-                    "CV 7-day": "tip.cv"} %}
+                    "CV 7-day": "tip.cv", "HRV variation": "tip.hrv_variation"} %}
 
 <nav class="tabs">
   {% for m in models %}
@@ -33,7 +33,7 @@
   </div>
 </div>
 
-<div class="card"><div id="chart" style="height:{{ 860 if model.key == 'debt' else 700 }}px"></div></div>
+<div class="card"><div id="chart" style="height:{{ 760 if model.key == 'debt' else 700 }}px"></div>{% if model.key == 'debt' %}<div id="legend" class="legend"></div>{% endif %}</div>
 </section>
 
 <section class="pane" id="pane-weeks" hidden>
@@ -104,48 +104,64 @@ document.querySelectorAll('nav.tabs:not(.panes) a').forEach(a => a.addEventListe
 showPane(location.hash.slice(1) || 'overview');
 const days = {{ series|tojson }};
 const modelKey = {{ model.key|tojson }};
+const STATES = {{ state_names|tojson }};
+// The author's legend colours.
+const STATE_COLORS = {
+  "Peak freshness": "#5fcf9b", "Standard loading (parasympathetic)": "#6fb8e0", "Standard loading (sympathetic)": "#7f9ff0",
+  "Chronic creep": "#f5b94f", "Functional overreaching": "#a37ef0", "Autonomic rebound (fake-out)": "#ef7fb4",
+  "Borderline exhaustion": "#f08a5d", "NFO / danger": "#e04848",
+};
 const L = {{ {
   "Readiness": t("Readiness"), "readiness": t("readiness"), "Fatigue debt": t("Fatigue debt"), "HRV normal range": t("HRV normal range"),
   "HRV 7-day": t("HRV 7-day"), "RHR normal range": t("RHR normal range"), "RHR": t("RHR"), "RHR 7-day": t("RHR 7-day"),
   "Resting HR": t("Resting HR"), "Decision": t("Decision"), "Functional overreaching": t("Functional overreaching"),
-  "Adaptation limit": t("Adaptation limit"), "Danger threshold": t("Danger threshold"), "Normal range (SWC)": t("Normal range (SWC)"), "CV 7-day (%)": t("CV 7-day (%)"),
+  "Adaptation limit": t("Adaptation limit"), "Danger threshold": t("Danger threshold"), "HRV variation": t("HRV variation"), "Normal range (SWC)": t("Normal range (SWC)"), "CV 7-day (%)": t("CV 7-day (%)"),
 }|tojson }};
 if (days.length && modelKey === "debt") {
   const css = getComputedStyle(document.documentElement);
   const c = n => css.getPropertyValue('--' + n).trim();
   const x = days.map(d => d.date);
-  const col = s => ({green: c('green'), amber: c('amber'), red: c('red')}[s] || c('line'));
-  const band = (lo, hi, axis, name) => [
-    {x, y: days.map(d => d[lo]), xaxis: 'x', yaxis: axis, mode: 'lines', line: {width: 0}, hoverinfo: 'skip', showlegend: false},
-    {x, y: days.map(d => d[hi]), xaxis: 'x', yaxis: axis, mode: 'lines', line: {width: 0}, fill: 'tonexty',
-     fillcolor: 'rgba(128,128,128,0.18)', name, hoverinfo: 'skip'},
-  ];
+  const stateName = s => STATES[s] || s;
+  // Bars coloured by size, like the author's charts: under 3 green, 3-6 amber, 6 and more red.
+  const bySize = (v, mid, lo, hi) => v == null ? c('line') : Math.abs(v - mid) >= hi ? c('red') : Math.abs(v - mid) >= lo ? c('amber') : c('green');
   const traces = [
-    {x, y: days.map(d => d.readiness), type: 'bar', marker: {color: days.map(d => col(d.signal))},
-     text: days.map(d => d.state), hovertemplate: '%{x}<br>' + L['readiness'] + ' %{y}<br>%{text}<extra></extra>', name: L['Readiness'], yaxis: 'y'},
-    {x, y: days.map(d => d.debt), yaxis: 'y2', mode: 'lines', fill: 'tozeroy', line: {color: '#888', width: 2}, name: L['Fatigue debt']},
+    {x, y: days.map(d => d.readiness), type: 'bar', marker: {color: days.map(d => bySize(d.readiness, 0, 3, 6))},
+     text: days.map(d => stateName(d.state)), hovertemplate: '%{x}<br>' + L['readiness'] + ' %{y}<br>%{text}<extra></extra>', yaxis: 'y'},
+    {x, y: days.map(d => d.debt), yaxis: 'y2', mode: 'lines', fill: 'tozeroy', line: {color: '#888', width: 2}, name: L['Fatigue debt'],
+     fillcolor: 'rgba(136,136,136,0.25)'},
     ...[['fo', '#8a63d2', 'Functional overreaching'], ['limit', c('amber'), 'Adaptation limit'], ['danger', c('red'), 'Danger threshold']]
       .map(([key, color, name]) => ({x, y: days.map(d => d[key]), yaxis: 'y2', mode: 'lines', line: {color, dash: 'dash', width: 1},
         name: L[name], hovertemplate: '%{y:.0f}'})),
-    ...band('hrv_low', 'hrv_high', 'y3', L['HRV normal range']),
-    {x, y: days.map(d => d.hrv), yaxis: 'y3', mode: 'markers', marker: {size: 4, color: c('accent'), opacity: .45}, name: 'HRV'},
-    {x, y: days.map(d => d.hrv_week), yaxis: 'y3', mode: 'lines', line: {color: c('accent')}, name: L['HRV 7-day']},
-    ...band('rhr_low', 'rhr_high', 'y4', L['RHR normal range']),
-    {x, y: days.map(d => d.rhr), yaxis: 'y4', mode: 'markers', marker: {size: 4, color: c('red'), opacity: .45}, name: L['RHR']},
-    {x, y: days.map(d => d.rhr_week), yaxis: 'y4', mode: 'lines', line: {color: c('red')}, name: L['RHR 7-day']},
+    {x, y: days.map(d => d.hrv_variation == null ? null : d.hrv_variation - 4.5), base: 4.5, type: 'bar', yaxis: 'y3',
+     marker: {color: days.map(d => d.hrv_variation == null ? c('line') : (d.hrv_variation <= 1 || d.hrv_variation >= 8) ? c('red')
+       : (d.hrv_variation < 3 || d.hrv_variation > 6) ? c('amber') : c('green'))},
+     customdata: days.map(d => d.hrv_variation), hovertemplate: L['HRV variation'] + ' %{customdata}<extra></extra>'},
   ];
-  const shapes = [...days.filter(d => d.recovered).map(d => ({type: 'line', x0: d.date, x1: d.date, yref: 'paper', y0: 0, y1: 1,
-      line: {color: c('green'), dash: 'dot', width: 1}}))];
+  // The state of each day as a coloured band behind all three panels.
+  const shapes = [];
+  let run = null;
+  days.forEach((d, i) => {
+    if (!run || run.state !== d.state) { run = {state: d.state, from: i}; if (STATE_COLORS[d.state]) shapes.push(run); }
+    run.to = i;
+  });
+  const half = 12 * 3600 * 1000, at = i => new Date(days[i].date).getTime();
+  const bands = shapes.map(r => ({type: 'rect', xref: 'x', yref: 'paper', x0: at(r.from) - half, x1: at(r.to) + half, y0: 0, y1: 1,
+    fillcolor: STATE_COLORS[r.state], opacity: 0.28, line: {width: 0}, layer: 'below'}));
+  const recoveries = days.filter(d => d.recovered).map(d => ({type: 'line', x0: d.date, x1: d.date, yref: 'y2 domain', y0: 0, y1: 1,
+    line: {color: c('green'), dash: 'dot', width: 1.5}}));
+  const varBand = {type: 'rect', xref: 'x domain', x0: 0, x1: 1, yref: 'y3', y0: 3, y1: 6, fillcolor: 'rgba(128,128,128,0.18)', line: {width: 0}, layer: 'below'};
   const axis = (domain, title) => ({domain, title: {text: title}, gridcolor: c('line'), zerolinecolor: c('line')});
   Plotly.newPlot('chart', traces, {
-    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: c('text')},
-    margin: {l: 60, r: 10, t: 10, b: 30}, showlegend: false, hovermode: 'x unified', shapes,
-    xaxis: {gridcolor: c('line')},
-    yaxis: {...axis([0.79, 1], L['Readiness']), range: [-9.5, 9.5]},
-    yaxis2: {...axis([0.53, 0.75], L['Fatigue debt']), rangemode: 'tozero'},
-    yaxis3: axis([0.27, 0.49], 'HRV (ms)'),
-    yaxis4: axis([0, 0.23], L['Resting HR']),
+    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: c('text')}, bargap: 0,
+    margin: {l: 60, r: 10, t: 10, b: 30}, showlegend: false, hovermode: 'x unified', shapes: [...bands, varBand, ...recoveries],
+    xaxis: {gridcolor: c('line'), anchor: 'y3'},
+    yaxis: {...axis([0.70, 1], L['Readiness'] + ' (−9…+9)'), range: [-9.5, 9.5], tickvals: [-6, -3, 0, 3, 6]},
+    yaxis2: {...axis([0.36, 0.66], L['Fatigue debt']), rangemode: 'tozero'},
+    yaxis3: {...axis([0, 0.32], L['HRV variation'] + ' (0…9)'), range: [-0.5, 9.5], tickvals: [0, 3, 4.5, 6, 9]},
   }, {responsive: true, displaylogo: false});
+  const present = [...new Set(days.map(d => d.state))].filter(s => STATE_COLORS[s]);
+  document.getElementById('legend').innerHTML = Object.keys(STATE_COLORS).filter(s => present.includes(s))
+    .map(s => `<span><i style="background:${STATE_COLORS[s]}"></i>${stateName(s)}</span>`).join('');
 }
 if (days.length && modelKey !== "debt") {
   const css = getComputedStyle(document.documentElement);
