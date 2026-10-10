@@ -49,7 +49,7 @@
   {% endif %}
 </div>
 
-<div class="card"><div id="chart" style="height:{{ 1100 if model.key == 'debt' else 700 }}px"></div>{% if model.key == 'debt' %}<div id="legend" class="legend"></div>{% endif %}</div>
+<div class="card">{% if series %}<nav class="tabs periods" aria-label="{{ t('Period') }}">{% for n, label in [(30, "1 month"), (90, "3 months"), (180, "6 months"), (365, "1 year"), (0, "All")] %}<a href="#" data-days="{{ n }}">{{ t(label) }}</a>{% endfor %}<label class="muted small">{{ t("Last") }} <input type="number" id="period-days" min="7" max="{{ series|length }}" inputmode="numeric"> {{ t("days") }}</label></nav>{% endif %}<div id="chart" style="height:{{ 1100 if model.key == 'debt' else 700 }}px"></div>{% if model.key == 'debt' %}<div id="legend" class="legend"></div>{% endif %}</div>
 </section>
 
 <section class="pane" id="pane-weeks" hidden>
@@ -116,9 +116,10 @@ document.querySelectorAll('.panes a').forEach(a => a.addEventListener('click', e
   history.replaceState(null, '', '#' + a.dataset.pane);
   showPane(a.dataset.pane);
 }));
-document.querySelectorAll('nav.tabs:not(.panes) a').forEach(a => a.addEventListener('click', () => { a.href += location.hash; }));
+document.querySelectorAll('nav.tabs:not(.panes):not(.periods) a').forEach(a => a.addEventListener('click', () => { a.href += location.hash; }));
 showPane(location.hash.slice(1) || 'overview');
-const days = {{ series|tojson }};
+const series = {{ series|tojson }};
+let days = series;
 const modelKey = {{ model.key|tojson }};
 const STATES = {{ state_names|tojson }};
 const STATE_COLORS = {{ state_colors|tojson }};
@@ -144,6 +145,16 @@ function edgeMarkers(key, range, color, axis, name) {
     marker: {color, opacity: .5, size: days.map(d => out(d[key]) ? 7 : 4),
              symbol: days.map(d => !out(d[key]) ? 'circle' : d[key] > range[1] ? 'triangle-up' : 'triangle-down')}};
 }
+// On a phone dragging the chart zooms it instead of scrolling the page; the period buttons do that job there.
+const touch = matchMedia('(pointer: coarse)').matches;
+const fixed = layout => {
+  if (!touch) return layout;
+  layout.dragmode = false;
+  Object.keys(layout).filter(k => /^[xy]axis/.test(k)).forEach(k => layout[k].fixedrange = true);
+  return layout;
+};
+const config = {responsive: true, displaylogo: false, displayModeBar: !touch};
+function draw() {
 if (days.length && modelKey === "debt") {
   const css = getComputedStyle(document.documentElement);
   const c = n => css.getPropertyValue('--' + n).trim();
@@ -188,7 +199,7 @@ if (days.length && modelKey === "debt") {
     line: {color: c('green'), dash: 'dot', width: 1.5}}));
   const varBand = {type: 'rect', xref: 'x domain', x0: 0, x1: 1, yref: 'y3', y0: 3, y1: 6, fillcolor: 'rgba(128,128,128,0.18)', line: {width: 0}, layer: 'below'};
   const axis = (domain, title) => ({domain, title: {text: title}, gridcolor: c('line'), zerolinecolor: c('line')});
-  Plotly.newPlot('chart', traces, {
+  Plotly.react('chart', traces, fixed({
     paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: c('text')}, bargap: 0,
     margin: {l: 60, r: 10, t: 10, b: 30}, showlegend: false, hovermode: 'x unified', shapes: [...bands, varBand, ...recoveries],
     xaxis: {gridcolor: c('line'), anchor: 'y3'},
@@ -197,7 +208,7 @@ if (days.length && modelKey === "debt") {
     yaxis4: {...axis([0.38, 0.55], 'HRV (ms)'), range: hrvRange},
     yaxis5: {...axis([0.19, 0.35], L['Resting HR']), range: rhrRange},
     yaxis3: {...axis([0, 0.16], L['HRV variation'] + ' (0…9)'), range: [-0.5, 9.5], tickvals: [0, 3, 4.5, 6, 9]},
-  }, {responsive: true, displaylogo: false});
+  }), config);
   const present = [...new Set(days.map(d => d.state))].filter(s => STATE_COLORS[s]);
   document.getElementById('legend').innerHTML = Object.keys(STATE_COLORS).filter(s => present.includes(s))
     .map(s => `<span><i style="background:${STATE_COLORS[s]}"></i>${stateName(s)}</span>`).join('');
@@ -221,7 +232,7 @@ if (days.length && modelKey !== "debt") {
     edgeMarkers('rhr', rhrRange, c('red'), 'y4', L['Resting HR']),
   ];
   const axis = (domain, title) => ({domain, title: {text: title}, gridcolor: c('line'), zerolinecolor: c('line')});
-  Plotly.newPlot('chart', traces, {
+  Plotly.react('chart', traces, fixed({
     paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', font: {color: c('text')},
     margin: {l: 60, r: 10, t: 10, b: 30}, showlegend: false, hovermode: 'x unified', bargap: 0,
     xaxis: {gridcolor: c('line')},
@@ -229,7 +240,34 @@ if (days.length && modelKey !== "debt") {
     yaxis2: axis([0.42, 0.88], 'HRV (ms)'),
     yaxis3: {...axis([0.22, 0.38], 'CV %'), rangemode: 'tozero'},
     yaxis4: {...axis([0, 0.18], L['Resting HR']), range: rhrRange},
-  }, {responsive: true, displaylogo: false});
+  }), config);
 }
+}
+// A shorter period redraws from the days in it, so the axes fit what is on screen.
+// Any number of days can be typed in; the buttons are shortcuts for the usual ones.
+const daysInput = document.getElementById('period-days');
+function setPeriod(n) {
+  n = Math.max(0, Math.round(+n) || 0);
+  if (n >= series.length) n = 0;
+  if (n && n < 7) n = 7;
+  document.querySelectorAll('.periods a').forEach(a => a.classList.toggle('active', +a.dataset.days === n));
+  if (daysInput) daysInput.value = n || series.length;
+  if (n && series.length) {
+    const from = new Date(series[series.length - 1].date);
+    from.setDate(from.getDate() - n + 1);
+    const cut = from.toISOString().slice(0, 10);
+    days = series.filter(d => d.date >= cut);
+  } else days = series;
+  try { localStorage.setItem('period', n); } catch (_) {}
+  draw();
+}
+document.querySelectorAll('.periods a').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault();
+  setPeriod(a.dataset.days);
+}));
+if (daysInput) daysInput.addEventListener('change', () => setPeriod(daysInput.value));
+let saved = null;
+try { saved = localStorage.getItem('period'); } catch (_) {}
+setPeriod(saved ?? (touch ? 90 : 0));
 </script>
 {% endblock %}
