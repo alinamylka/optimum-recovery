@@ -140,6 +140,7 @@ PL: dict[str, str] = {
     "You now against your usual": "Ty teraz a Twoja norma",
     "Last 7 days": "Ostatnie 7 dni",
     "Period": "Okres",
+    "1 week": "1 tydz.",
     "1 month": "1 mies.",
     "3 months": "3 mies.",
     "6 months": "6 mies.",

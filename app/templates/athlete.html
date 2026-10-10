@@ -49,7 +49,7 @@
   {% endif %}
 </div>
 
-<div class="card">{% if series %}<nav class="tabs periods" aria-label="{{ t('Period') }}">{% for n, label in [(30, "1 month"), (90, "3 months"), (180, "6 months"), (365, "1 year"), (0, "All")] %}<a href="#" data-days="{{ n }}">{{ t(label) }}</a>{% endfor %}<label class="muted small">{{ t("Last") }} <input type="number" id="period-days" min="7" max="{{ series|length }}" inputmode="numeric"> {{ t("days") }}</label></nav>{% endif %}<div id="chart" style="height:{{ 1100 if model.key == 'debt' else 700 }}px"></div>{% if model.key == 'debt' %}<div id="legend" class="legend"></div>{% endif %}</div>
+<div class="card">{% if series %}<nav class="tabs periods" aria-label="{{ t('Period') }}">{% for n, label in [(7, "1 week"), (30, "1 month"), (90, "3 months"), (180, "6 months"), (365, "1 year"), (0, "All")] %}<a href="#" data-days="{{ n }}">{{ t(label) }}</a>{% endfor %}<label class="muted small">{{ t("Last") }} <input type="number" id="period-days" min="7" max="{{ series|length }}" inputmode="numeric"> {{ t("days") }}</label></nav>{% endif %}<div id="chart" style="height:{{ 1100 if model.key == 'debt' else 700 }}px"></div>{% if model.key == 'debt' %}<div id="legend" class="legend"></div>{% endif %}</div>
 </section>
 
 <section class="pane" id="pane-weeks" hidden>

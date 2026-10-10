@@ -356,7 +356,7 @@ def athlete_mail(
 def athlete_mail_preview(athlete_id: int, me: Login = Depends(auth.current)):
     a = _manageable(me, athlete_id, coach_only=True)
     built = mailer.report_on([a], a["name"], language=a["language"] or "pl")
-    return HTMLResponse(built[1] if built else "<p>No data.</p>")
+    return HTMLResponse(mailer.inline(built[1], built[3]) if built else "<p>No data.</p>")
 
 
 @app.post("/athletes/{athlete_id}/account", response_class=HTMLResponse)
@@ -574,7 +574,7 @@ def preview_mail(me: Login = Depends(auth.current)):
     built = mailer.report(me.username, me.role, language=me.language)
     if built is None:
         return HTMLResponse("<p>No athletes to report on yet.</p>")
-    return HTMLResponse(built[1])
+    return HTMLResponse(mailer.inline(built[1], built[3]))
 
 
 @app.post("/account/test", response_class=HTMLResponse)

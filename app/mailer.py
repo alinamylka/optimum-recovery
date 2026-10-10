@@ -8,6 +8,7 @@ the environment. Without it the report can still be previewed in the app.
 
 from __future__ import annotations
 
+import base64
 import logging
 import os
 import smtplib
@@ -21,7 +22,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from . import db, describe, models
+from . import charts, db, describe, models
 
 log = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ def last_week(today: datetime) -> tuple[pd.Timestamp, pd.Timestamp]:
 def report(
     username: str, role: str, today: datetime | None = None, language: str = "pl"
 ) -> tuple[str, str, str] | None:
-    """Subject, HTML and plain text of the report, or None when there is nobody to report on."""
+    """Subject, HTML, plain text and chart pictures of the report, or None when there is nobody to report on."""
     from .main import _latest, _refresh_if_stale  # the web module holds the shared helpers
 
     return report_on(athletes_for(username, role), username, today, language)
@@ -81,7 +82,7 @@ def report_on(athletes: list, recipient: str, today: datetime | None = None, lan
     start, end = last_week(today)
     if not athletes:
         return None
-    entries = []
+    entries, images = [], {}
     for a in athletes:
         _refresh_if_stale(a)
         data = db.metrics(a["id"])
@@ -91,9 +92,14 @@ def report_on(athletes: list, recipient: str, today: datetime | None = None, lan
             known = result[result["signal"].notna()] if not result.empty else result
             week = known[(known.index >= start) & (known.index <= end)] if not known.empty else known
             before = known[(known.index >= start - pd.Timedelta(days=7)) & (known.index < start)] if not known.empty else None
+            png = charts.week_png(m.key, result, start, end, language)
+            cid = f"chart-{a['id']}-{m.key}"
+            if png:
+                images[cid] = png
             per_model.append(
                 {
                     "model": m,
+                    "chart": cid if png else None,
                     "today": _latest(m, result, language),
                     "summary": describe.week(week, before, language) if not week.empty else describe.no_data(language),
                     "counts": week["signal"].value_counts().to_dict() if not week.empty else {},
@@ -110,7 +116,14 @@ def report_on(athletes: list, recipient: str, today: datetime | None = None, lan
     }
     html = templates.get_template("mail.html").render(context)
     text = templates.get_template("mail.txt").render(context)
-    return subject, html, text
+    return subject, html, text, images
+
+
+def inline(html: str, images: dict[str, bytes]) -> str:
+    """The report for viewing in the browser, where cid: pictures don't resolve."""
+    for cid, png in images.items():
+        html = html.replace(f"cid:{cid}", "data:image/png;base64," + base64.b64encode(png).decode())
+    return html
 
 
 ACCOUNT_MAIL = {
@@ -144,13 +157,17 @@ def account_mail(kind: str, username: str, link: str, hours: int, language: str 
     return subject, html, text
 
 
-def send(to: str, subject: str, html: str, text: str) -> None:
+def send(to: str, subject: str, html: str, text: str, images: dict[str, bytes] | None = None) -> None:
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = os.environ.get("MAIL_FROM") or os.environ["SMTP_USER"]
     message["To"] = to
     message.set_content(text)
     message.add_alternative(html, subtype="html")
+    # Pictures go along as inline parts that the HTML points to with cid:, which mail apps show without asking.
+    body = message.get_payload()[1]
+    for cid, png in (images or {}).items():
+        body.add_related(png, maintype="image", subtype="png", cid=f"<{cid}>")
     host, port = os.environ["SMTP_HOST"], int(os.environ.get("SMTP_PORT", "465"))
     # 465 is TLS from the first byte (Gmail); 587 starts plain and upgrades (Oracle Email Delivery).
     if port == 465:
